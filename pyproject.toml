@@ -1,0 +1,14 @@
+[project]
+name = "fotia"
+version = "1.0.0"
+description = "Fotia — sistema integral de gestión fotográfica (escritorio, offline-first)"
+requires-python = ">=3.11"
+dependencies = ["customtkinter>=5.2"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pyinstaller>=6.0"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-q"
