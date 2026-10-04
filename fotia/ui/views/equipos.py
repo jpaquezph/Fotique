@@ -14,7 +14,7 @@ from ..dialogs import (
     DialogoFichaEquipo,
     DialogoTabla,
 )
-from ..theme import GRIS_TEXTO, NARANJA, ROJO, VERDE, colores_tema
+from ..theme import GRIS_TEXTO
 from ..widgets import Tabla, boton, boton_secundario
 from .base import VistaBase
 
@@ -26,7 +26,6 @@ class VistaEquipos(VistaBase):
 
     # -- construcción ------------------------------------------------------ #
     def _construir(self) -> None:
-        c = colores_tema()
         contenedor = ctk.CTkFrame(self, fg_color="transparent")
         contenedor.grid(row=1, column=0, sticky="nsew", padx=2)
         contenedor.grid_rowconfigure(1, weight=1)
@@ -36,10 +35,10 @@ class VistaEquipos(VistaBase):
         barra.grid(row=0, column=0, sticky="ew", pady=(0, 8))
         boton(barra, "Nuevo equipo", self._nuevo).pack(side="left", padx=(0, 6))
         boton(barra, "Editar", self._editar).pack(side="left", padx=(0, 6))
-        boton(barra, "Asignar", self._asignar, color=VERDE).pack(side="left", padx=(0, 6))
-        boton(barra, "Devolver", self._devolver, color=NARANJA).pack(side="left", padx=(0, 6))
+        boton(barra, "Asignar", self._asignar, color="exito").pack(side="left", padx=(0, 6))
+        boton(barra, "Devolver", self._devolver, color="aviso").pack(side="left", padx=(0, 6))
         boton_secundario(barra, "Ficha", self._ficha).pack(side="left", padx=(0, 6))
-        boton(barra, "Eliminar", self._eliminar, color=ROJO).pack(side="left", padx=(0, 6))
+        boton(barra, "Eliminar", self._eliminar, color="peligro").pack(side="left", padx=(0, 6))
 
         self._alertas_var = ctk.StringVar(value="Servicio: todos")
         menu = ctk.CTkOptionMenu(
@@ -51,7 +50,7 @@ class VistaEquipos(VistaBase):
 
         self._busqueda = ctk.CTkEntry(barra, width=260, placeholder_text="Buscar serie, marca, modelo o fotógrafo…")
         self._busqueda.pack(side="right")
-        self._busqueda.bind("<KeyRelease>", lambda _e: self.refrescar())
+        self._busqueda.bind("<KeyRelease>", self.refrescar_diferido)
 
         columnas = [
             {"clave": "serie", "titulo": "N° de serie", "ancho": 130},

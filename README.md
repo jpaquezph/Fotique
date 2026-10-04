@@ -48,6 +48,25 @@ Variables útiles: `FOTIA_DB` (ruta de la base), `FOTIA_DATA_DIR` (carpeta de da
 En la **primera ejecución** se carga un conjunto de datos de ejemplo para poder
 recorrer la aplicación; a partir de ahí nunca se vuelve a sembrar solo.
 
+## Acceso y usuarios
+
+La aplicación pide iniciar sesión. La primera vez que se abre una base sin
+usuarios se crea la cuenta de **administrador**; el resto de las cuentas se dan
+de alta desde la sección **Usuarios** (sólo visible para administradores).
+
+- **Recuperar la contraseña:** cada cuenta recibe al crearse un *código de
+  recuperación* de un solo uso (`XXXX-XXXX-XXXX-XXXX`). Con «¿Olvidó su
+  contraseña?» ese código permite elegir una nueva y entrega un código nuevo.
+  Se puede regenerar desde **Mi cuenta**.
+- **Sin código:** un administrador restablece la contraseña desde **Usuarios**;
+  se genera una provisoria que el usuario debe cambiar al ingresar.
+- **Bloqueo:** 5 intentos fallidos bloquean la cuenta 5 minutos.
+
+Las contraseñas y los códigos se guardan sólo como hash (PBKDF2-HMAC-SHA256).
+El inicio de sesión controla el acceso a la aplicación; el archivo `fotia.db`
+no está cifrado, así que quien pueda leerlo desde fuera de Fotia puede ver los
+datos del estudio.
+
 ## Tests (TDD)
 
 ```powershell
@@ -60,7 +79,10 @@ Pirámide de testing del SRS §4:
    (asignación de equipos, saldos, validaciones, alertas de service).
 2. **Integración (SQLite `:memory:`)** — `tests/test_repositorios.py`
    (historial, restricciones de borrado, calendario consolidado, respaldos).
-3. **GUI** — `tests/test_ui.py` (ventanas, diálogos, formularios).
+3. **GUI** — `tests/test_ui.py` (ventanas, diálogos, formularios, pantalla de acceso).
+
+El acceso tiene su propia suite en `tests/test_usuarios.py` (hash, ingreso,
+bloqueo, recuperación y reglas de administración).
 
 Smoke manual (no requiere pytest):
 
@@ -112,6 +134,7 @@ Fotia/
 │   ├── domain/              # modelos y reglas de negocio (sin Qt ni SQLite)
 │   │   ├── models.py        # Equipo, Fotografo, Proyecto, …
 │   │   ├── services.py      # asignaciones, saldos, generación de contratos
+│   │   ├── auth.py          # hash de contraseñas y códigos de recuperación
 │   │   └── errors.py        # excepciones de negocio
 │   ├── db/
 │   │   ├── schema.sql       # esquema SQLite (RF + índices)
@@ -119,7 +142,8 @@ Fotia/
 │   │   ├── repositories.py  # CRUD + consultas
 │   │   └── seed.py          # datos de ejemplo
 │   └── ui/
-│       ├── theme.py         # paleta y estilos ttk
+│       ├── theme.py         # paleta (pares claro/oscuro) y estilos ttk
+│       ├── acceso.py        # pantalla de ingreso, primer usuario y recuperación
 │       ├── widgets.py       # Tabla, diálogos, campos, conversiones
 │       ├── dialogs.py       # todos los formularios modales
 │       ├── ventana_principal.py

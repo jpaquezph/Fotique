@@ -36,6 +36,32 @@ def test_todas_las_vistas_se_construyen_y_refrescan(app):
         assert vista.clave == clave
 
 
+def test_las_vistas_se_construyen_al_abrirlas(app):
+    vistas = app.ventana.vistas
+    assert vistas.construida("panel")  # la inicial
+    pendientes = [clave for clave in vistas if not vistas.construida(clave)]
+    if pendientes:  # la precarga u otro test pudieron haberlas armado antes
+        app.ventana.mostrar(pendientes[0])
+        assert vistas.construida(pendientes[0])
+
+
+def test_al_redimensionar_solo_queda_ubicada_la_vista_activa(app):
+    ventana = app.ventana
+    ventana.mostrar("equipos")
+    ventana.mostrar("servicios")
+    ventana.update()
+    assert ventana.vistas["equipos"].winfo_manager()  # apilada debajo de la activa
+
+    ventana.geometry("1200x740")
+    ventana.update()
+    assert ventana.vistas["servicios"].winfo_manager()
+    assert not ventana.vistas["equipos"].winfo_manager()
+
+    ventana.mostrar("equipos")
+    ventana.update()
+    assert ventana.vistas["equipos"].winfo_ismapped()
+
+
 def test_navegacion_entre_vistas(app):
     claves = list(app.ventana.vistas)
     for clave in claves:
@@ -157,3 +183,77 @@ def test_parsear_fecha_y_monto():
     assert parsear_monto("1,500,000.00") == 1_500_000
     assert parsear_monto("123,45") == 123.45
     assert parsear_monto("") == 0.0
+
+
+# -- acceso (al final: reemplaza la sesión de la ventana compartida) --------- #
+
+
+def _completar(acceso, **valores):
+    for clave, valor in valores.items():
+        acceso._campos[clave].delete(0, "end")
+        acceso._campos[clave].insert(0, valor)
+
+
+def test_acceso_primer_usuario_ingreso_y_roles(app, monkeypatch):
+    from fotia.domain import auth
+    from fotia.domain.models import Usuario
+
+    monkeypatch.setattr(auth, "ITERACIONES", 1_000)
+    ventana = app.ventana
+
+    # base sin usuarios: se pide crear al administrador
+    ventana.cerrar_sesion()
+    acceso = ventana._acceso
+    assert len(ventana.vistas) == 0
+    _completar(acceso, nombre="Jorge Páquez", usuario="jorge",
+               password="fotia2026", repetir="otra2026")
+    acceso._accion()
+    assert "no coinciden" in acceso._mensaje.cget("text")
+    assert not app.repos.usuarios.hay_usuarios()
+
+    _completar(acceso, repetir="fotia2026")
+    acceso._accion()
+    assert app.usuario is None  # antes de entrar se muestra el código de recuperación
+    acceso._accion()
+    ventana.update()
+    assert app.usuario.es_admin
+    assert "usuarios" in ventana.vistas
+    assert ventana.clave_activa == "panel"
+
+    # contraseña incorrecta y luego ingreso de un operador
+    app.repos.usuarios.crear(Usuario(usuario="marina"), "marina2026")
+    ventana.cerrar_sesion()
+    acceso = ventana._acceso
+    _completar(acceso, usuario="marina", password="incorrecta1")
+    acceso._accion()
+    assert app.usuario is None
+    assert "incorrectos" in acceso._mensaje.cget("text")
+
+    _completar(acceso, password="marina2026")
+    acceso._accion()
+    ventana.update()
+    assert app.usuario.usuario == "marina"
+    assert "usuarios" not in ventana.vistas  # sólo administradores
+    assert "usuarios" not in ventana._botones
+
+
+def test_acceso_recupera_la_password_con_el_codigo(app, monkeypatch):
+    from fotia.domain import auth
+
+    monkeypatch.setattr(auth, "ITERACIONES", 1_000)
+    ventana = app.ventana
+    repo = app.repos.usuarios
+    codigo = repo.regenerar_codigo(repo.por_nombre("marina").id, "marina2026")
+
+    ventana.cerrar_sesion()
+    acceso = ventana._acceso
+    acceso.mostrar_recuperacion()
+    _completar(acceso, usuario="marina", codigo=codigo,
+               password="recuperada7", repetir="recuperada7")
+    acceso._accion()   # restablece y muestra el código nuevo
+    acceso._accion()   # vuelve al ingreso con el usuario cargado
+    assert acceso._campos["usuario"].get() == "marina"
+    _completar(acceso, password="recuperada7")
+    acceso._accion()
+    ventana.update()
+    assert app.usuario.usuario == "marina"

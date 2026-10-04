@@ -6,8 +6,10 @@ from typing import Any, Callable, Optional
 
 import customtkinter as ctk
 
-from ..theme import FUENTE_PEQUE, FUENTE_TITULO, GRIS_TEXTO, colores_tema
+from ..theme import FUENTE_PEQUE, FUENTE_TITULO, GRIS_TEXTO, TEXTO
 from ..widgets import DialogoMensaje, ejecutar_protegido
+
+ESPERA_BUSQUEDA_MS = 180
 
 
 class VistaBase(ctk.CTkFrame):
@@ -15,11 +17,12 @@ class VistaBase(ctk.CTkFrame):
 
     clave = ""
     titulo = ""
+    solo_admin = False
 
     def __init__(self, master: Any, app: Any):
-        c = colores_tema()
         super().__init__(master, fg_color="transparent")
         self.app = app
+        self._refresco_pendiente: Optional[str] = None
         self.grid_rowconfigure(1, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
@@ -27,7 +30,7 @@ class VistaBase(ctk.CTkFrame):
         cabecera.grid(row=0, column=0, sticky="ew", padx=4, pady=(4, 10))
         cabecera.grid_columnconfigure(0, weight=1)
         ctk.CTkLabel(cabecera, text=self.titulo, font=FUENTE_TITULO,
-                     text_color=c["texto"], anchor="w").grid(
+                     text_color=TEXTO, anchor="w").grid(
             row=0, column=0, sticky="w"
         )
         if getattr(self, "descripcion", ""):
@@ -44,6 +47,16 @@ class VistaBase(ctk.CTkFrame):
 
     def refrescar(self) -> None:
         """Actualiza la vista con los datos actuales de la base."""
+
+    def refrescar_diferido(self, *_args) -> None:
+        """Refresca cuando el usuario deja de tipear (evita una consulta por tecla)."""
+        if self._refresco_pendiente is not None:
+            self.after_cancel(self._refresco_pendiente)
+        self._refresco_pendiente = self.after(ESPERA_BUSQUEDA_MS, self._refresco_diferido)
+
+    def _refresco_diferido(self) -> None:
+        self._refresco_pendiente = None
+        self.refrescar()
 
     # -- accesos ---------------------------------------------------------- #
     @property

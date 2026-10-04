@@ -142,6 +142,27 @@ CREATE TABLE IF NOT EXISTS configuracion (
     valor TEXT NOT NULL DEFAULT ''
 );
 
+-- --------------------------------------------------------------------------- #
+-- Acceso — usuarios de la aplicación
+-- --------------------------------------------------------------------------- #
+-- password_hash y codigo_hash guardan derivaciones PBKDF2, nunca texto plano.
+CREATE TABLE IF NOT EXISTS usuarios (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario            TEXT    NOT NULL UNIQUE COLLATE NOCASE,
+    nombre             TEXT    NOT NULL DEFAULT '',
+    email              TEXT    NOT NULL DEFAULT '',
+    rol                TEXT    NOT NULL DEFAULT 'Operador'
+                           CHECK (rol IN ('Administrador', 'Operador')),
+    password_hash      TEXT    NOT NULL,
+    codigo_hash        TEXT    NOT NULL DEFAULT '',
+    activo             INTEGER NOT NULL DEFAULT 1,
+    debe_cambiar       INTEGER NOT NULL DEFAULT 0,
+    intentos_fallidos  INTEGER NOT NULL DEFAULT 0,
+    bloqueado_hasta    TEXT,
+    ultimo_acceso      TEXT,
+    creado_en          TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
+);
+
 -- Índices para el RNF-03 (listados <= 150 ms)
 CREATE INDEX IF NOT EXISTS idx_equipos_estado      ON equipos (estado);
 CREATE INDEX IF NOT EXISTS idx_equipos_fotografo   ON equipos (fotografo_id);

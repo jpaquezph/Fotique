@@ -31,5 +31,13 @@ class EliminacionRestringidaError(FotiaError):
     """Violación de integridad referencial de alto nivel (RNF-04)."""
 
 
+class CredencialesInvalidasError(FotiaError):
+    """Usuario, contraseña o código de recuperación incorrectos."""
+
+
+class CuentaBloqueadaError(FotiaError):
+    """Demasiados intentos fallidos: la cuenta queda bloqueada unos minutos."""
+
+
 class ErrorBackups(FotiaError):
     """Falló la exportación/importación de la base de datos."""

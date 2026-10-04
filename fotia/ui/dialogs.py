@@ -19,12 +19,14 @@ from ..domain.models import (
     Fotografo,
     PlantillaContrato,
     Proyecto,
+    RolUsuario,
     Servicio,
     TrabajoPendiente,
+    Usuario,
 )
 from ..domain.services import generar_texto_contrato
 from ..util import fecha_legible, moneda
-from .theme import ACENTO, FUENTE_NORMAL, FUENTE_SUBTITULO, GRIS_TEXTO, colores_tema
+from .theme import FUENTE_NORMAL, FUENTE_SUBTITULO, GRIS_TEXTO
 from .widgets import Dialogo, DialogoMensaje, Tabla, boton, boton_secundario
 
 
@@ -569,7 +571,7 @@ class DialogoContrato(Dialogo):
         area = self.campo_area("contenido", "Contenido",
                                c.contenido if c else "", altura=300)
         self._generar = boton(self.form, "Generar desde la plantilla",
-                              self._generar_contenido, color=ACENTO, ancho=230)
+                              self._generar_contenido, ancho=230)
         self._generar.grid(row=self._fila, column=1, sticky="w", padx=10, pady=(0, 8))
         self._fila += 1
         self.botones("Guardar", self._guardar)
@@ -736,3 +738,129 @@ class DialogoDetalleProyecto(Dialogo):
         else:
             self.nota("Proyecto saldado.")
         boton(self._pie, "Cerrar", self.cancelar, ancho=120).pack(side="right")
+
+
+# --------------------------------------------------------------------------- #
+# Acceso — usuarios y contraseñas
+# --------------------------------------------------------------------------- #
+
+
+def _passwords_iguales(dialogo: Dialogo) -> str:
+    nueva = dialogo._campos["password"].get()
+    if nueva != dialogo._campos["repetir"].get():
+        raise DatosInvalidosError("Las contraseñas no coinciden.")
+    return nueva
+
+
+class DialogoUsuario(Dialogo):
+    """Alta (devuelve ``(usuario, contraseña)``) o edición (devuelve el usuario)."""
+
+    def __init__(self, master: Any, usuario: Optional[Usuario] = None):
+        super().__init__(master, "Editar usuario" if usuario else "Nuevo usuario",
+                         ancho=600, alto=480)
+        u = usuario
+        self._usuario = u
+        entrada = self.campo_texto("usuario", "Usuario *", u.usuario if u else "")
+        if u is not None:
+            entrada.configure(state="disabled")
+        self.campo_texto("nombre", "Nombre y apellido", u.nombre if u else "")
+        self.campo_texto("email", "Email", u.email if u else "")
+        self.campo_selector("rol", "Rol", [str(r) for r in RolUsuario],
+                            str(u.rol) if u else str(RolUsuario.OPERADOR))
+        if u is None:
+            self.campo_password("password", "Contraseña *")
+            self.campo_password("repetir", "Repetir contraseña *")
+            self.nota("Mínimo 8 caracteres, con letras y números. Los administradores "
+                      "además gestionan usuarios.")
+        else:
+            self.campo_check("activo", "Cuenta activa (puede ingresar)", u.activo)
+        self.botones("Guardar", self._guardar)
+
+    def _guardar(self):
+        if self._usuario is None:
+            nuevo = Usuario(usuario=self.texto("usuario"), nombre=self.texto("nombre"),
+                            email=self.texto("email"),
+                            rol=RolUsuario(self.valor_selector("rol")))
+            nuevo.validar()
+            return nuevo, _passwords_iguales(self)
+        u = self._usuario
+        return Usuario(usuario=u.usuario, nombre=self.texto("nombre"),
+                       email=self.texto("email"),
+                       rol=RolUsuario(self.valor_selector("rol")),
+                       activo=self.es_verdadero("activo"), id=u.id,
+                       debe_cambiar_password=u.debe_cambiar_password,
+                       ultimo_acceso=u.ultimo_acceso)
+
+
+class DialogoCambiarPassword(Dialogo):
+    """Devuelve ``(actual, nueva)``."""
+
+    def __init__(self, master: Any):
+        super().__init__(master, "Cambiar contraseña", ancho=560, alto=340)
+        self.campo_password("actual", "Contraseña actual *")
+        self.campo_password("password", "Nueva contraseña *")
+        self.campo_password("repetir", "Repetir contraseña *")
+        self.nota("Mínimo 8 caracteres, con letras y números.")
+        self.botones("Cambiar", self._guardar)
+
+    def _guardar(self) -> tuple[str, str]:
+        return self._campos["actual"].get(), _passwords_iguales(self)
+
+
+class DialogoPassword(Dialogo):
+    """Pide la contraseña actual para confirmar una operación sensible."""
+
+    def __init__(self, master: Any, titulo: str, nota: str):
+        super().__init__(master, titulo, ancho=560, alto=270)
+        self.nota(nota)
+        self.campo_password("actual", "Contraseña *")
+        self.botones("Continuar", lambda: self._campos["actual"].get())
+
+
+class DialogoSecreto(Dialogo):
+    """Muestra una sola vez un código o contraseña provisoria, con botón de copia."""
+
+    def __init__(self, master: Any, titulo: str, nota: str, secreto: str):
+        super().__init__(master, titulo, ancho=560, alto=300)
+        self.nota(nota)
+        entrada = ctk.CTkEntry(self.form, justify="center", height=42,
+                               font=("Consolas", 16, "bold"))
+        entrada.insert(0, secreto)
+        entrada.configure(state="readonly")
+        entrada.grid(row=self._fila, column=0, columnspan=2, sticky="ew",
+                     padx=10, pady=6)
+        self._fila += 1
+
+        def copiar() -> None:
+            self.clipboard_clear()
+            self.clipboard_append(secreto)
+            copia.configure(text="Copiado")
+
+        copia = boton_secundario(self._pie, "Copiar", copiar, ancho=110)
+        copia.pack(side="left")
+        boton(self._pie, "Cerrar", self.cancelar, ancho=120).pack(side="right")
+
+
+class DialogoMiCuenta(Dialogo):
+    """Datos propios. Devuelve ``(nombre, email)``; la contraseña va aparte."""
+
+    def __init__(self, master: Any, usuario: Usuario, al_cambiar_password,
+                 al_regenerar_codigo):
+        super().__init__(master, "Mi cuenta", ancho=580, alto=440)
+        entrada = self.campo_texto("usuario", "Usuario", usuario.usuario)
+        entrada.configure(state="disabled")
+        rol = self.campo_texto("rol", "Rol", str(usuario.rol))
+        rol.configure(state="disabled")
+        self.campo_texto("nombre", "Nombre y apellido", usuario.nombre)
+        self.campo_texto("email", "Email", usuario.email)
+        self.separador("Seguridad")
+        acciones = ctk.CTkFrame(self.form, fg_color="transparent")
+        acciones.grid(row=self._fila, column=0, columnspan=2, sticky="w",
+                      padx=10, pady=6)
+        self._fila += 1
+        boton_secundario(acciones, "Cambiar contraseña…",
+                         lambda: al_cambiar_password(self), ancho=180).pack(
+            side="left", padx=(0, 8))
+        boton_secundario(acciones, "Nuevo código de recuperación…",
+                         lambda: al_regenerar_codigo(self), ancho=240).pack(side="left")
+        self.botones("Guardar", lambda: (self.texto("nombre"), self.texto("email")))

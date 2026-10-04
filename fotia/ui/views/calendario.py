@@ -9,7 +9,17 @@ import customtkinter as ctk
 
 from ...domain.models import Evento
 from ..dialogs import DialogoEvento, DialogoTabla
-from ..theme import ACENTO, ACENTO_HOVER, GRIS_TEXTO, ROJO, colores_tema
+from ..theme import (
+    BORDE,
+    BOTONES,
+    CON_EVENTOS,
+    GRIS_TEXTO,
+    RESALTE,
+    TEXTO,
+    TEXTO_BOTON,
+    TEXTO_SUAVE,
+    TEXTO_TENUE,
+)
 from ..widgets import Tabla, boton, boton_secundario
 from .base import VistaBase
 
@@ -26,7 +36,6 @@ class VistaCalendario(VistaBase):
                    "personal en una sola vista (RF-08)")
 
     def _construir(self) -> None:
-        c = colores_tema()
         contenedor = ctk.CTkFrame(self, fg_color="transparent")
         contenedor.grid(row=1, column=0, sticky="nsew", padx=2)
         contenedor.grid_rowconfigure(1, weight=1)
@@ -52,7 +61,7 @@ class VistaCalendario(VistaBase):
         boton(barra, "Nuevo evento", self._nuevo_evento).pack(side="left", padx=(0, 6))
         boton_secundario(barra, "Editar evento", self._editar_evento).pack(
             side="left", padx=(0, 6))
-        boton(barra, "Eliminar", self._eliminar_evento, color=ROJO).pack(
+        boton(barra, "Eliminar", self._eliminar_evento, color="peligro").pack(
             side="left", padx=(0, 6))
         boton_secundario(barra, "Ver todo el mes", self._ver_mes).pack(
             side="left", padx=(0, 6))
@@ -72,15 +81,19 @@ class VistaCalendario(VistaBase):
 
         for i, dia in enumerate(DIAS_CABECERA):
             ctk.CTkLabel(panel_mes, text=dia, font=("Segoe UI", 11, "bold"),
-                         text_color=c["texto_suave"], width=54).grid(
+                         text_color=TEXTO_SUAVE, width=54).grid(
                 row=0, column=i, padx=2, pady=(0, 4))
         self._celdas: list[ctk.CTkButton] = []
+        self._estado_celdas: list[tuple | None] = [None] * 42
+        self._ids_fotografos: dict[str, int] = {}
+        self._nombres_fotografos: dict[int, str] = {}
+        self._titulos_proyectos: dict[int, str] = {}
         for indice in range(42):
             fila, columna = divmod(indice, 7)
             celda = ctk.CTkButton(
                 panel_mes, text="", width=54, height=44, corner_radius=8,
                 font=("Segoe UI", 11), fg_color="transparent",
-                hover_color=c["borde"], anchor="center",
+                hover_color=RESALTE, text_color=TEXTO, anchor="center",
                 command=lambda i=indice: self._seleccionar_celda(i),
             )
             celda.grid(row=fila + 1, column=columna, padx=2, pady=2, sticky="nsew")
@@ -114,26 +127,24 @@ class VistaCalendario(VistaBase):
 
     # -- datos ------------------------------------------------------------- #
     def _id_fotografo_filtro(self):
-        valor = self._filtro.get()
-        if valor == "Todos los fotógrafos":
-            return None
-        for f in self.repos.fotografos.listar():
-            if f.nombre_completo == valor:
-                return f.id
-        return None
+        return self._ids_fotografos.get(self._filtro.get())
 
     def refrescar(self, *_args) -> None:
-        fotografos = [f.nombre_completo for f in self.repos.fotografos.listar()]
-        valores = ["Todos los fotógrafos"] + fotografos
-        actual = self._filtro.get()
-        self._menu_fotografos.configure(values=valores)
-        self._menu_fotografos.set(
-            actual if actual in valores else "Todos los fotógrafos"
-        )
+        # Una consulta por tabla; los nombres de cada fila salen de estos mapas.
+        fotografos = self.repos.fotografos.listar()
+        self._ids_fotografos = {f.nombre_completo: f.id for f in fotografos}
+        self._nombres_fotografos = {f.id: f.nombre_completo for f in fotografos}
+        self._titulos_proyectos = self.repos.proyectos.titulos()
 
-        self._etiqueta_mes.configure(
-            text=f"{MESES[self._mes.month - 1].capitalize()} de {self._mes.year}"
-        )
+        valores = ["Todos los fotógrafos"] + list(self._ids_fotografos)
+        if valores != self._menu_fotografos.cget("values"):
+            self._menu_fotografos.configure(values=valores)
+        if self._filtro.get() not in valores:
+            self._menu_fotografos.set("Todos los fotógrafos")
+
+        mes = f"{MESES[self._mes.month - 1].capitalize()} de {self._mes.year}"
+        if mes != self._etiqueta_mes.cget("text"):
+            self._etiqueta_mes.configure(text=mes)
         fotografo_id = self._id_fotografo_filtro()
 
         # eventos de toda la grilla (6 semanas) en una sola consulta
@@ -145,31 +156,28 @@ class VistaCalendario(VistaBase):
             por_dia.setdefault(evento.fecha, []).append(evento)
         self._eventos_por_dia = por_dia
 
-        c = colores_tema()
-        primero = inicio
+        hoy = date.today()
+        seleccionado, seleccionado_hover = BOTONES["primario"]
         for indice, celda in enumerate(self._celdas):
-            dia = primero + timedelta(days=indice)
-            fuera = dia.month != self._mes.month
+            dia = inicio + timedelta(days=indice)
             tiene = bool(por_dia.get(dia))
-            texto = str(dia.day)
             if dia == self._dia:
-                fondo, texto_color = ACENTO, "#ffffff"
-                hover = ACENTO_HOVER
-            elif dia == date.today():
-                fondo, texto_color = c["borde"], c["texto"]
-                hover = c["encabezado"]
+                fondo, texto_color, hover = seleccionado, TEXTO_BOTON, seleccionado_hover
+            elif dia == hoy:
+                fondo, texto_color, hover = BORDE, TEXTO, RESALTE
             elif tiene:
-                fondo = "#1f3b52" if c["texto"] == "#ffffff" else "#d8e9f7"
-                texto_color = c["texto"]
-                hover = c["encabezado"]
+                fondo, texto_color, hover = CON_EVENTOS, TEXTO, RESALTE
             else:
-                fondo, texto_color = "transparent", c["texto"]
-                hover = c["borde"]
-            if fuera:
-                texto_color = c["borde"]
-            celda.configure(text=texto, fg_color=fondo, text_color=texto_color,
-                            hover_color=hover,
-                            font=("Segoe UI", 11, "bold" if tiene else "normal"))
+                fondo, texto_color, hover = "transparent", TEXTO, RESALTE
+            if dia.month != self._mes.month and dia != self._dia:
+                texto_color = TEXTO_TENUE
+            estado = (dia.day, fondo, texto_color, hover, tiene)
+            # Redibujar un botón es lo caro: al elegir un día solo cambian dos celdas.
+            if estado != self._estado_celdas[indice]:
+                self._estado_celdas[indice] = estado
+                celda.configure(text=str(dia.day), fg_color=fondo,
+                                text_color=texto_color, hover_color=hover,
+                                font=("Segoe UI", 11, "bold" if tiene else "normal"))
         self._mostrar_dia()
 
     def _inicio_grilla(self) -> date:
@@ -187,8 +195,8 @@ class VistaCalendario(VistaBase):
                 e.hora or "—",
                 e.titulo,
                 e.tipo,
-                _nombre_fotografo(self.repos, e.fotografo_id),
-                _nombre_proyecto(self.repos, e.proyecto_id),
+                self._nombres_fotografos.get(e.fotografo_id, "—"),
+                self._titulos_proyectos.get(e.proyecto_id) or "—",
             ]
             for e in eventos
         ]
@@ -284,7 +292,7 @@ class VistaCalendario(VistaBase):
                 e.hora or "—",
                 e.titulo,
                 e.tipo,
-                _nombre_fotografo(self.repos, e.fotografo_id),
+                self._nombres_fotografos.get(e.fotografo_id, "—"),
             ]
             for e in eventos
         ]
@@ -303,17 +311,3 @@ class VistaCalendario(VistaBase):
 
 def _tag_tipo(tipo: str) -> str:
     return {"Service": "proximo", "Entrega": "ok", "Sesión": "pendiente"}.get(tipo, "")
-
-
-def _nombre_fotografo(repos, fotografo_id) -> str:
-    if fotografo_id is None:
-        return "—"
-    fotografo = repos.fotografos.obtener(fotografo_id)
-    return fotografo.nombre_completo if fotografo else "—"
-
-
-def _nombre_proyecto(repos, proyecto_id) -> str:
-    if proyecto_id is None:
-        return "—"
-    proyecto = repos.proyectos.obtener(proyecto_id)
-    return (proyecto.titulo or "—") if proyecto else "—"

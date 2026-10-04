@@ -7,7 +7,7 @@ import customtkinter as ctk
 from ...domain.models import Contrato, PlantillaContrato
 from ...util import fecha_legible
 from ..dialogs import DialogoContrato, DialogoPlantilla
-from ..theme import GRIS_TEXTO, ROJO
+from ..theme import BORDE, FONDO, GRIS_TEXTO
 from ..widgets import Tabla, boton
 from .base import VistaBase
 
@@ -23,7 +23,8 @@ class VistaContratos(VistaBase):
         contenedor.grid_rowconfigure(2, weight=1)
         contenedor.grid_columnconfigure(0, weight=1)
 
-        self._tab = ctk.CTkTabview(contenedor, command=self.refrescar)
+        self._tab = ctk.CTkTabview(contenedor, command=self.refrescar, fg_color=FONDO,
+                                   border_width=1, border_color=BORDE)
         self._tab.grid(row=0, column=0, sticky="ew", pady=(0, 8))
         self._tab.add("Contratos")
         self._tab.add("Plantillas")
@@ -33,7 +34,7 @@ class VistaContratos(VistaBase):
         boton(barra_c, "Nuevo contrato", self._nuevo_contrato).pack(
             side="left", padx=(0, 6))
         boton(barra_c, "Editar", self._editar_contrato).pack(side="left", padx=(0, 6))
-        boton(barra_c, "Eliminar", self._eliminar_contrato, color=ROJO).pack(
+        boton(barra_c, "Eliminar", self._eliminar_contrato, color="peligro").pack(
             side="left", padx=(0, 6))
 
         barra_p = ctk.CTkFrame(self._tab.tab("Plantillas"), fg_color="transparent")
@@ -41,7 +42,7 @@ class VistaContratos(VistaBase):
         boton(barra_p, "Nueva plantilla", self._nueva_plantilla).pack(
             side="left", padx=(0, 6))
         boton(barra_p, "Editar", self._editar_plantilla).pack(side="left", padx=(0, 6))
-        boton(barra_p, "Eliminar", self._eliminar_plantilla, color=ROJO).pack(
+        boton(barra_p, "Eliminar", self._eliminar_plantilla, color="peligro").pack(
             side="left", padx=(0, 6))
 
         columnas_c = [

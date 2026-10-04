@@ -12,14 +12,20 @@ from ..domain.errors import DatosInvalidosError, FotiaError
 from ..util import fecha_legible
 from .theme import (
     ACENTO,
+    BORDE,
+    BOTONES,
+    FONDO,
     FUENTE_NORMAL,
     FUENTE_PEQUE,
     FUENTE_SUBTITULO,
     FUENTE_TITULO,
     GRIS_TEXTO,
+    RESALTE,
     ROJO,
+    TEXTO,
+    TEXTO_BOTON,
+    TEXTO_SUAVE,
     colores_etiquetas,
-    colores_tema,
 )
 
 # --------------------------------------------------------------------------- #
@@ -81,7 +87,8 @@ class Tabla(ctk.CTkFrame):
         doble_click: Optional[Callable[[Any], None]] = None,
         altura: int = 12,
     ):
-        super().__init__(master, fg_color="transparent")
+        super().__init__(master, fg_color=FONDO, border_width=1,
+                         border_color=BORDE, corner_radius=8)
         self.columnas = list(columnas)
         self._objetos: dict[str, Any] = {}
         self._doble_click = doble_click
@@ -104,9 +111,7 @@ class Tabla(ctk.CTkFrame):
                 anchor=col.get("anchor", "w"),
                 stretch=col.get("stretch", True),
             )
-        for nombre, color in colores_etiquetas().items():
-            self.tree.tag_configure(nombre, foreground=color)
-        self.tree.tag_configure("alerta", foreground=ROJO)
+        self._colorear_etiquetas()
 
         vsb = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview,
                             style="Fotia.Vertical.TScrollbar")
@@ -114,14 +119,23 @@ class Tabla(ctk.CTkFrame):
                             style="Fotia.Horizontal.TScrollbar")
         self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
 
-        self.tree.grid(row=0, column=0, sticky="nsew")
-        vsb.grid(row=0, column=1, sticky="ns")
-        hsb.grid(row=1, column=0, sticky="ew")
+        self.tree.grid(row=0, column=0, sticky="nsew", padx=(6, 0), pady=(6, 0))
+        vsb.grid(row=0, column=1, sticky="ns", padx=(0, 6), pady=(6, 0))
+        hsb.grid(row=1, column=0, sticky="ew", padx=(6, 0), pady=(0, 6))
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
         self.tree.bind("<Double-1>", self._al_doble_clic)
         self.tree.bind("<Return>", self._al_doble_clic)
+
+    def _colorear_etiquetas(self) -> None:
+        for nombre, color in colores_etiquetas().items():
+            self.tree.tag_configure(nombre, foreground=color)
+
+    def _set_appearance_mode(self, mode_string: str) -> None:
+        super()._set_appearance_mode(mode_string)
+        if hasattr(self, "tree"):  # los tags de ttk no siguen el modo solos
+            self._colorear_etiquetas()
 
     # -- datos ------------------------------------------------------------ #
     def actualizar(
@@ -130,16 +144,18 @@ class Tabla(ctk.CTkFrame):
         objetos: Sequence[Any],
         etiquetas: Optional[Sequence[str]] = None,
     ) -> None:
+        # La selección se conserva por posición: los iid cambian en cada carga.
         seleccion = self.id_seleccionado()
+        indice = self.tree.index(seleccion) if seleccion else None
         self.tree.delete(*self.tree.get_children())
         self._objetos.clear()
         for i, valores in enumerate(filas):
-            iid = str(self.tree.insert("", "end", values=list(valores)))
+            tags = (etiquetas[i],) if etiquetas and i < len(etiquetas) and etiquetas[i] else ()
+            iid = self.tree.insert("", "end", values=list(valores), tags=tags)
             self._objetos[iid] = objetos[i]
-            if etiquetas and i < len(etiquetas) and etiquetas[i]:
-                self.tree.item(iid, tags=(etiquetas[i],))
-        if seleccion and seleccion in self._objetos:
-            self.tree.selection_set(seleccion)
+        hijos = self.tree.get_children()
+        if indice is not None and hijos:
+            self.tree.selection_set(hijos[min(indice, len(hijos) - 1)])
 
     def limpiar(self) -> None:
         self.tree.delete(*self.tree.get_children())
@@ -184,34 +200,27 @@ def boton(
     texto: str,
     comando: Optional[Callable[[], Any]],
     *,
-    color: str = ACENTO,
+    color: str = "primario",
     ancho: int = 118,
     alto: int = 32,
     estado: str = "normal",
 ) -> ctk.CTkButton:
+    """Botón de acción; ``color`` es una variante de ``theme.BOTONES``."""
+    relleno, hover = BOTONES[color]
     return ctk.CTkButton(
         master, text=texto, command=comando, width=ancho, height=alto,
-        fg_color=color, hover_color=_hover(color), font=FUENTE_NORMAL, state=estado,
+        fg_color=relleno, hover_color=hover, text_color=TEXTO_BOTON,
+        font=FUENTE_NORMAL, state=estado,
     )
 
 
-def _hover(color: str) -> str:
-    return {
-        ACENTO: "#36719f",
-        ROJO: "#c93c41",
-        "transparent": "#d0d0d4",
-    }.get(color, color)
-
-
 def boton_secundario(master: Any, texto: str, comando: Optional[Callable[[], Any]],
-                     **kwargs) -> ctk.CTkButton:
-    kwargs.setdefault("color", "transparent")
-    btn = boton(master, texto, comando, **kwargs)
-    btn.configure(fg_color="transparent", border_width=1,
-                  border_color=colores_tema()["texto_suave"],
-                  hover_color=colores_tema()["borde"],
-                  text_color=colores_tema()["texto"])
-    return btn
+                     *, ancho: int = 118, alto: int = 32) -> ctk.CTkButton:
+    return ctk.CTkButton(
+        master, text=texto, command=comando, width=ancho, height=alto,
+        fg_color="transparent", hover_color=RESALTE, text_color=TEXTO,
+        border_width=1, border_color=TEXTO_SUAVE, font=FUENTE_NORMAL,
+    )
 
 
 class Tarjeta(ctk.CTkFrame):
@@ -219,19 +228,22 @@ class Tarjeta(ctk.CTkFrame):
 
     def __init__(self, master: Any, titulo: str, valor: Any = "0",
                  *, color: Optional[str] = None):
-        super().__init__(master, corner_radius=10, height=96)
+        super().__init__(master, corner_radius=10, height=96, fg_color=FONDO,
+                         border_width=1, border_color=BORDE)
         self.grid_propagate(False)
+        self._actual = (str(valor), color or TEXTO)
         self._titulo = ctk.CTkLabel(self, text=titulo.upper(), font=("Segoe UI", 10),
                                     text_color=GRIS_TEXTO, anchor="w")
         self._valor = ctk.CTkLabel(self, text=str(valor), font=("Segoe UI", 24, "bold"),
-                                   text_color=color or "gray90", anchor="w")
+                                   text_color=color or TEXTO, anchor="w")
         self._titulo.pack(fill="x", padx=14, pady=(12, 0))
         self._valor.pack(fill="x", padx=14, pady=(2, 12))
 
-    def set_valor(self, valor: Any, color: Optional[str] = None) -> None:
-        self._valor.configure(text=str(valor))
-        if color:
-            self._valor.configure(text_color=color)
+    def set_valor(self, valor: Any, color: Optional[tuple] = None) -> None:
+        nuevo = (str(valor), color or TEXTO)
+        if nuevo != self._actual:  # redibujar un CTkLabel es caro: solo si cambió
+            self._actual = nuevo
+            self._valor.configure(text=nuevo[0], text_color=nuevo[1])
 
 
 class BarraBotones(ctk.CTkFrame):
@@ -253,7 +265,7 @@ class BarraBotones(ctk.CTkFrame):
             self._buscador = None
 
     def agregar(self, texto: str, comando: Optional[Callable[[], Any]],
-                *, color: str = ACENTO) -> ctk.CTkButton:
+                *, color: str = "primario") -> ctk.CTkButton:
         btn = boton(self, texto, comando, color=color)
         btn.grid(row=0, column=self._indice, padx=(0, 8), pady=2, sticky="w")
         self._indice += 1
@@ -294,12 +306,11 @@ class Dialogo(ctk.CTkToplevel):
         self._campos: dict[str, Any] = {}
         self._objetos_selector: dict[str, dict[str, Any]] = {}
 
-        c = colores_tema()
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(1, weight=1)
 
         self._cabecera = ctk.CTkLabel(self, text=titulo, font=FUENTE_TITULO,
-                                      anchor="w", text_color=c["texto"])
+                                      anchor="w", text_color=TEXTO)
         self._cabecera.grid(row=0, column=0, sticky="ew", padx=18, pady=(16, 6))
 
         self.form = ctk.CTkScrollableFrame(self, fg_color="transparent")
@@ -324,6 +335,11 @@ class Dialogo(ctk.CTkToplevel):
         entrada.grid(row=self._fila, column=1, sticky="ew", padx=10, pady=6, ipady=4)
         self._fila += 1
         self._campos[clave] = entrada
+        return entrada
+
+    def campo_password(self, clave: str, etiqueta: str) -> ctk.CTkEntry:
+        entrada = self.campo_texto(clave, etiqueta)
+        entrada.configure(show="\u2022")
         return entrada
 
     def campo_fecha(self, clave: str, etiqueta: str,

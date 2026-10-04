@@ -7,23 +7,30 @@ from pathlib import Path
 from typing import Optional, Union
 
 from .db import BaseDatos, cargar_datos_demo
+from .domain.models import Usuario
 from .ui import VentanaPrincipal
 from .ui.theme import aplicar_estilo_tabla, configurar_apariencia
 from .util import ruta_base_datos
 
 
 class Aplicacion:
-    """Contexto compartido: base de datos, preferencias y ventana."""
+    """Contexto compartido: base de datos, preferencias, sesión y ventana."""
 
     def __init__(self, ruta: Optional[Union[str, Path]] = None):
         self.db = BaseDatos(ruta)
         self.ruta_db = self.db.ruta
         self.ventana: Optional[VentanaPrincipal] = None
         self.tema = self.db.repos.config("tema", "Sistema")
+        self.usuario: Optional[Usuario] = None
 
     @property
     def repos(self):
         return self.db.repos
+
+    @property
+    def es_admin(self) -> bool:
+        """Sin sesión (pruebas, scripts) no hay restricciones de rol."""
+        return self.usuario is None or self.usuario.es_admin
 
     def guardar_tema(self, modo: str) -> None:
         self.tema = modo
@@ -52,7 +59,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         cargar_datos_demo(app.repos)
 
     try:
-        ventana = VentanaPrincipal(app)
+        ventana = VentanaPrincipal(app, acceso=True)
         app.ventana = ventana
         ventana.mainloop()
     finally:

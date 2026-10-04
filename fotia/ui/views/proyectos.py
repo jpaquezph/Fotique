@@ -12,7 +12,7 @@ from ..dialogs import (
     DialogoPago,
     DialogoProyecto,
 )
-from ..theme import GRIS_TEXTO, ROJO, colores_tema
+from ..theme import GRIS_TEXTO
 from ..widgets import Tabla, boton, boton_secundario
 from .base import VistaBase
 
@@ -46,11 +46,11 @@ class VistaProyectos(VistaBase):
         boton(self._botones_proyectos, "Detalles", self._detalles).pack(
             side="left", padx=(0, 6))
         boton(self._botones_proyectos, "Registrar pago", self._registrar_pago,
-              color="#2ea043").pack(side="left", padx=(0, 6))
+              color="exito").pack(side="left", padx=(0, 6))
         boton(self._botones_proyectos, "Contrato", self._contrato).pack(
             side="left", padx=(0, 6))
         boton(self._botones_proyectos, "Eliminar", self._eliminar_proyecto,
-              color=ROJO).pack(side="left", padx=(0, 6))
+              color="peligro").pack(side="left", padx=(0, 6))
 
         self._botones_clientes = ctk.CTkFrame(barra, fg_color="transparent")
         boton(self._botones_clientes, "Nuevo cliente", self._nuevo_cliente).pack(
@@ -58,12 +58,12 @@ class VistaProyectos(VistaBase):
         boton(self._botones_clientes, "Editar", self._editar_cliente).pack(
             side="left", padx=(0, 6))
         boton(self._botones_clientes, "Eliminar", self._eliminar_cliente,
-              color=ROJO).pack(side="left", padx=(0, 6))
+              color="peligro").pack(side="left", padx=(0, 6))
 
         self._busqueda = ctk.CTkEntry(barra, width=250,
                                       placeholder_text="Buscar proyecto o cliente…")
         self._busqueda.pack(side="right")
-        self._busqueda.bind("<KeyRelease>", lambda _e: self.refrescar())
+        self._busqueda.bind("<KeyRelease>", self.refrescar_diferido)
 
         # -- pestañas internas --------------------------------------------- #
         self._panel_proyectos = ctk.CTkFrame(contenedor, fg_color="transparent")

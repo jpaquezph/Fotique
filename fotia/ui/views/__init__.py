@@ -9,6 +9,7 @@ from .panel import VistaPanel
 from .proyectos import VistaProyectos
 from .respaldos import VistaRespaldos
 from .servicios import VistaServicios
+from .usuarios import VistaUsuarios
 
 TODAS = [
     VistaPanel,
@@ -19,6 +20,7 @@ TODAS = [
     VistaServicios,
     VistaContratos,
     VistaRespaldos,
+    VistaUsuarios,
 ]
 
 __all__ = [
@@ -32,4 +34,5 @@ __all__ = [
     "VistaProyectos",
     "VistaRespaldos",
     "VistaServicios",
+    "VistaUsuarios",
 ]

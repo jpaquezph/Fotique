@@ -8,10 +8,13 @@ negocio (asignaciones, saldos, eliminaciones restringidas) viven en
 from __future__ import annotations
 
 import sqlite3
-from datetime import date
+from datetime import date, datetime, timedelta
 from typing import Optional, Sequence, Union
 
+from ..domain import auth
 from ..domain.errors import (
+    CredencialesInvalidasError,
+    CuentaBloqueadaError,
     DatosInvalidosError,
     EliminacionRestringidaError,
 )
@@ -28,8 +31,10 @@ from ..domain.models import (
     Pago,
     PlantillaContrato,
     Proyecto,
+    RolUsuario,
     Servicio,
     TrabajoPendiente,
+    Usuario,
 )
 from ..domain.services import a_fecha, a_texto, equipos_en_alerta, validar_eliminacion_fotografo
 
@@ -573,6 +578,11 @@ class ProyectoRepo:
         for proyecto in proyectos:
             proyecto.pagos = pagos.get(proyecto.id, [])
         return proyectos
+
+    def titulos(self) -> dict[int, str]:
+        """``id ➜ título`` sin cargar clientes ni pagos (calendario, RNF-03)."""
+        filas = self.conn.execute("SELECT id, titulo FROM proyectos").fetchall()
+        return {r["id"]: r["titulo"] or "" for r in filas}
 
     def obtener(self, proyecto_id: int) -> Optional[Proyecto]:
         fila = self.conn.execute(
@@ -1145,6 +1155,238 @@ class EventoRepo:
 
 
 # --------------------------------------------------------------------------- #
+# Acceso — usuarios, contraseñas y recuperación
+# --------------------------------------------------------------------------- #
+
+_CREDENCIALES_INCORRECTAS = "Usuario o contraseña incorrectos."
+
+
+def _momento(valor: datetime) -> str:
+    return valor.isoformat(sep=" ", timespec="seconds")
+
+
+class UsuarioRepo:
+    def __init__(self, conn: sqlite3.Connection):
+        self.conn = conn
+
+    @staticmethod
+    def _map(row: sqlite3.Row) -> Usuario:
+        return Usuario(
+            usuario=row["usuario"],
+            nombre=row["nombre"],
+            email=row["email"],
+            rol=RolUsuario(row["rol"]),
+            activo=bool(row["activo"]),
+            debe_cambiar_password=bool(row["debe_cambiar"]),
+            ultimo_acceso=(datetime.fromisoformat(row["ultimo_acceso"])
+                           if row["ultimo_acceso"] else None),
+            id=row["id"],
+        )
+
+    def _fila(self, usuario: str) -> Optional[sqlite3.Row]:
+        return self.conn.execute(
+            "SELECT * FROM usuarios WHERE usuario = ?", ((usuario or "").strip(),)
+        ).fetchone()
+
+    # -- consultas --------------------------------------------------------- #
+    def hay_usuarios(self) -> bool:
+        return self.conn.execute("SELECT 1 FROM usuarios LIMIT 1").fetchone() is not None
+
+    def listar(self) -> list[Usuario]:
+        filas = self.conn.execute("SELECT * FROM usuarios ORDER BY usuario").fetchall()
+        return [self._map(r) for r in filas]
+
+    def obtener(self, usuario_id: int) -> Optional[Usuario]:
+        fila = self.conn.execute(
+            "SELECT * FROM usuarios WHERE id = ?", (usuario_id,)
+        ).fetchone()
+        return self._map(fila) if fila else None
+
+    def por_nombre(self, usuario: str) -> Optional[Usuario]:
+        fila = self._fila(usuario)
+        return self._map(fila) if fila else None
+
+    # -- altas, bajas y cambios -------------------------------------------- #
+    def crear(self, usuario: Usuario, password: str) -> str:
+        """Crea la cuenta y devuelve su código de recuperación (se muestra una vez)."""
+        usuario.validar()
+        auth.validar_password(password)
+        codigo = auth.generar_codigo_recuperacion()
+        try:
+            cur = self.conn.execute(
+                "INSERT INTO usuarios (usuario, nombre, email, rol, password_hash, "
+                "codigo_hash, activo, debe_cambiar) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    usuario.usuario.strip(),
+                    usuario.nombre.strip(),
+                    usuario.email.strip(),
+                    str(usuario.rol),
+                    auth.hash_password(password),
+                    auth.hash_password(auth.normalizar_codigo(codigo)),
+                    1 if usuario.activo else 0,
+                    1 if usuario.debe_cambiar_password else 0,
+                ),
+            )
+        except sqlite3.IntegrityError as exc:
+            raise DatosInvalidosError(
+                f"Ya existe el usuario «{usuario.usuario.strip()}»."
+            ) from exc
+        usuario.id = cur.lastrowid
+        self.conn.commit()
+        return codigo
+
+    def actualizar(self, usuario: Usuario) -> Usuario:
+        """Nombre, email, rol y estado. El nombre de usuario no se cambia."""
+        if usuario.id is None:
+            raise DatosInvalidosError("Usuario sin id: no se puede actualizar.")
+        if not (usuario.es_admin and usuario.activo):
+            self._exigir_otro_admin(usuario.id)
+        self.conn.execute(
+            "UPDATE usuarios SET nombre=?, email=?, rol=?, activo=? WHERE id=?",
+            (
+                usuario.nombre.strip(),
+                usuario.email.strip(),
+                str(usuario.rol),
+                1 if usuario.activo else 0,
+                usuario.id,
+            ),
+        )
+        self.conn.commit()
+        return usuario
+
+    def eliminar(self, usuario_id: int) -> None:
+        self._exigir_otro_admin(usuario_id)
+        self.conn.execute("DELETE FROM usuarios WHERE id = ?", (usuario_id,))
+        self.conn.commit()
+
+    def _exigir_otro_admin(self, usuario_id: int) -> None:
+        """Nunca se queda la base sin un administrador activo que pueda entrar."""
+        otros = self.conn.execute(
+            "SELECT COUNT(*) FROM usuarios WHERE rol = ? AND activo = 1 AND id <> ?",
+            (str(RolUsuario.ADMINISTRADOR), usuario_id),
+        ).fetchone()[0]
+        if not otros:
+            raise EliminacionRestringidaError(
+                "Debe quedar al menos un administrador activo."
+            )
+
+    # -- ingreso ----------------------------------------------------------- #
+    def autenticar(
+        self, usuario: str, password: str, ahora: Optional[datetime] = None
+    ) -> Usuario:
+        ahora = ahora or datetime.now()
+        fila = self._fila(usuario)
+        if fila is None:
+            raise CredencialesInvalidasError(_CREDENCIALES_INCORRECTAS)
+        self._exigir_desbloqueo(fila, ahora)
+        if not auth.verificar_password(password, fila["password_hash"]):
+            self._registrar_fallo(fila, ahora)
+            raise CredencialesInvalidasError(_CREDENCIALES_INCORRECTAS)
+        if not fila["activo"]:
+            raise CredencialesInvalidasError(
+                "La cuenta está desactivada. Consulte a un administrador."
+            )
+        self.conn.execute(
+            "UPDATE usuarios SET intentos_fallidos = 0, bloqueado_hasta = NULL, "
+            "ultimo_acceso = ? WHERE id = ?",
+            (_momento(ahora), fila["id"]),
+        )
+        self.conn.commit()
+        return self.obtener(fila["id"])
+
+    def _exigir_desbloqueo(self, fila: sqlite3.Row, ahora: datetime) -> None:
+        if not fila["bloqueado_hasta"]:
+            return
+        hasta = datetime.fromisoformat(fila["bloqueado_hasta"])
+        if hasta > ahora:
+            minutos = max(1, -(-int((hasta - ahora).total_seconds()) // 60))
+            raise CuentaBloqueadaError(
+                "Cuenta bloqueada por intentos fallidos. "
+                f"Vuelva a intentar en {minutos} minuto(s)."
+            )
+
+    def _registrar_fallo(self, fila: sqlite3.Row, ahora: datetime) -> None:
+        intentos = fila["intentos_fallidos"] + 1
+        if intentos >= auth.MAX_INTENTOS:
+            hasta = ahora + timedelta(minutes=auth.MINUTOS_BLOQUEO)
+            self.conn.execute(
+                "UPDATE usuarios SET intentos_fallidos = 0, bloqueado_hasta = ? "
+                "WHERE id = ?",
+                (_momento(hasta), fila["id"]),
+            )
+        else:
+            self.conn.execute(
+                "UPDATE usuarios SET intentos_fallidos = ? WHERE id = ?",
+                (intentos, fila["id"]),
+            )
+        self.conn.commit()
+
+    # -- contraseñas ------------------------------------------------------- #
+    def _guardar_password(self, usuario_id: int, password: str, *,
+                          debe_cambiar: bool = False) -> None:
+        self.conn.execute(
+            "UPDATE usuarios SET password_hash = ?, debe_cambiar = ?, "
+            "intentos_fallidos = 0, bloqueado_hasta = NULL WHERE id = ?",
+            (auth.hash_password(password), 1 if debe_cambiar else 0, usuario_id),
+        )
+
+    def cambiar_password(self, usuario_id: int, actual: str, nueva: str) -> None:
+        fila = self.conn.execute(
+            "SELECT password_hash FROM usuarios WHERE id = ?", (usuario_id,)
+        ).fetchone()
+        if fila is None or not auth.verificar_password(actual, fila["password_hash"]):
+            raise CredencialesInvalidasError("La contraseña actual no es correcta.")
+        self.definir_password(usuario_id, nueva)
+
+    def definir_password(self, usuario_id: int, nueva: str) -> None:
+        """Fija la contraseña de una sesión ya autenticada (cambio obligatorio)."""
+        auth.validar_password(nueva)
+        self._guardar_password(usuario_id, nueva)
+        self.conn.commit()
+
+    def restablecer_con_codigo(
+        self, usuario: str, codigo: str, nueva: str, ahora: Optional[datetime] = None
+    ) -> str:
+        """Recuperación sin sesión: consume el código y devuelve uno nuevo."""
+        ahora = ahora or datetime.now()
+        incorrecto = "Usuario o código de recuperación incorrectos."
+        fila = self._fila(usuario)
+        if fila is None:
+            raise CredencialesInvalidasError(incorrecto)
+        self._exigir_desbloqueo(fila, ahora)
+        if not auth.verificar_password(auth.normalizar_codigo(codigo), fila["codigo_hash"]):
+            self._registrar_fallo(fila, ahora)
+            raise CredencialesInvalidasError(incorrecto)
+        auth.validar_password(nueva)
+        self._guardar_password(fila["id"], nueva)
+        return self._nuevo_codigo(fila["id"])
+
+    def restablecer_por_admin(self, usuario_id: int) -> str:
+        """Devuelve una contraseña provisoria; el usuario la cambia al ingresar."""
+        temporal = auth.generar_password_temporal()
+        self._guardar_password(usuario_id, temporal, debe_cambiar=True)
+        self.conn.commit()
+        return temporal
+
+    def regenerar_codigo(self, usuario_id: int, password: str) -> str:
+        fila = self.conn.execute(
+            "SELECT password_hash FROM usuarios WHERE id = ?", (usuario_id,)
+        ).fetchone()
+        if fila is None or not auth.verificar_password(password, fila["password_hash"]):
+            raise CredencialesInvalidasError("La contraseña no es correcta.")
+        return self._nuevo_codigo(usuario_id)
+
+    def _nuevo_codigo(self, usuario_id: int) -> str:
+        codigo = auth.generar_codigo_recuperacion()
+        self.conn.execute(
+            "UPDATE usuarios SET codigo_hash = ? WHERE id = ?",
+            (auth.hash_password(auth.normalizar_codigo(codigo)), usuario_id),
+        )
+        self.conn.commit()
+        return codigo
+
+
+# --------------------------------------------------------------------------- #
 # Agrupador de repositorios + utilidades de la app
 # --------------------------------------------------------------------------- #
 
@@ -1163,6 +1405,7 @@ class Repositorios:
         self.contratos = ContratoRepo(conn)
         self.trabajos = TrabajoRepo(conn)
         self.eventos = EventoRepo(conn)
+        self.usuarios = UsuarioRepo(conn)
 
     # -- configuración ----------------------------------------------------- #
     def config(self, clave: str, defecto: str = "") -> str:

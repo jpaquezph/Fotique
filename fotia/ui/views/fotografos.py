@@ -11,7 +11,7 @@ from ..dialogs import (
     DialogoTabla,
     DialogoTrabajo,
 )
-from ..theme import GRIS_TEXTO, ROJO, colores_tema
+from ..theme import GRIS_TEXTO
 from ..widgets import Tabla, boton, boton_secundario
 from .base import VistaBase
 
@@ -32,16 +32,16 @@ class VistaFotografos(VistaBase):
         boton(barra, "Nuevo fotógrafo", self._nuevo).pack(side="left", padx=(0, 6))
         boton(barra, "Editar", self._editar).pack(side="left", padx=(0, 6))
         boton_secundario(barra, "Ficha", self._ficha).pack(side="left", padx=(0, 6))
-        boton(barra, "Nuevo trabajo", self._nuevo_trabajo, color="#2ea043").pack(
+        boton(barra, "Nuevo trabajo", self._nuevo_trabajo, color="exito").pack(
             side="left", padx=(0, 6)
         )
         boton(barra, "Ver entregas", self._ver_entregas).pack(side="left", padx=(0, 6))
-        boton(barra, "Eliminar", self._eliminar, color=ROJO).pack(side="left", padx=(0, 6))
+        boton(barra, "Eliminar", self._eliminar, color="peligro").pack(side="left", padx=(0, 6))
 
         self._busqueda = ctk.CTkEntry(barra, width=250,
                                       placeholder_text="Buscar nombre, teléfono o email…")
         self._busqueda.pack(side="right")
-        self._busqueda.bind("<KeyRelease>", lambda _e: self.refrescar())
+        self._busqueda.bind("<KeyRelease>", self.refrescar_diferido)
 
         columnas = [
             {"clave": "nombre", "titulo": "Nombre y apellido", "ancho": 210},

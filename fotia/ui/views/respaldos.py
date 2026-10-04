@@ -9,7 +9,7 @@ import customtkinter as ctk
 from tkinter import filedialog
 
 from ...util import dir_respaldos, fecha_legible
-from ..theme import GRIS_TEXTO, ROJO, VERDE, colores_tema
+from ..theme import BORDE, FONDO, GRIS_TEXTO, TEXTO_SUAVE
 from ..widgets import Tabla, boton, boton_secundario
 from .base import VistaBase
 
@@ -20,7 +20,6 @@ class VistaRespaldos(VistaBase):
     descripcion = "RNF-05 · exportación e importación de la base SQLite y datos de ejemplo"
 
     def _construir(self) -> None:
-        c = colores_tema()
         contenedor = ctk.CTkFrame(self, fg_color="transparent")
         contenedor.grid(row=1, column=0, sticky="nsew", padx=2)
         contenedor.grid_rowconfigure(2, weight=1)
@@ -28,9 +27,9 @@ class VistaRespaldos(VistaBase):
 
         barra = ctk.CTkFrame(contenedor, fg_color="transparent")
         barra.grid(row=0, column=0, sticky="ew", pady=(0, 10))
-        boton(barra, "Crear respaldo…", self._crear_respaldo, color=VERDE).pack(
+        boton(barra, "Crear respaldo…", self._crear_respaldo, color="exito").pack(
             side="left", padx=(0, 6))
-        boton(barra, "Restaurar…", self._restaurar, color=ROJO).pack(
+        boton(barra, "Restaurar…", self._restaurar, color="peligro").pack(
             side="left", padx=(0, 6))
         boton_secundario(barra, "Verificar integridad", self._verificar).pack(
             side="left", padx=(0, 6))
@@ -39,10 +38,12 @@ class VistaRespaldos(VistaBase):
         boton_secundario(barra, "Cargar datos de ejemplo", self._cargar_demo).pack(
             side="left", padx=(0, 6))
 
-        ficha = ctk.CTkFrame(contenedor, corner_radius=10)
+        ficha = ctk.CTkFrame(contenedor, corner_radius=10, fg_color=FONDO,
+                             border_width=1, border_color=BORDE)
         ficha.grid(row=1, column=0, sticky="ew", pady=(0, 10))
         ficha.grid_columnconfigure(1, weight=1)
         self._datos: dict[str, ctk.CTkLabel] = {}
+        self._integridad: bool | None = None  # se recalcula al verificar o restaurar
         for i, (clave, etiqueta) in enumerate([
             ("ruta", "Archivo de base de datos"),
             ("tamano", "Tamaño"),
@@ -53,11 +54,11 @@ class VistaRespaldos(VistaBase):
         ]):
             ctk.CTkLabel(ficha, text=etiqueta, font=("Segoe UI", 11, "bold"),
                          anchor="w").grid(row=i, column=0, sticky="w",
-                                          padx=16, pady=(10 if i == 0 else 2))
+                                          padx=16, pady=((10 if i == 0 else 2), (10 if i == 5 else 2)))
             valor = ctk.CTkLabel(ficha, text="—", font=("Segoe UI", 11),
                                  text_color=GRIS_TEXTO, anchor="w")
             valor.grid(row=i, column=1, sticky="ew", padx=(8, 16),
-                       pady=(10 if i == 0 else 2))
+                       pady=((10 if i == 0 else 2), (10 if i == 5 else 2)))
             self._datos[clave] = valor
 
         columnas = [
@@ -70,7 +71,7 @@ class VistaRespaldos(VistaBase):
         ctk.CTkLabel(contenedor,
                      text="Consejo: copie la carpeta de respaldos a un disco externo "
                           "o nube de forma periódica.",
-                     font=("Segoe UI", 10), text_color=c["texto_suave"],
+                     font=("Segoe UI", 10), text_color=TEXTO_SUAVE,
                      anchor="w").grid(row=3, column=0, sticky="ew", pady=(6, 0))
 
     def refrescar(self) -> None:
@@ -96,8 +97,10 @@ class VistaRespaldos(VistaBase):
         carpeta = dir_respaldos()
         archivos = sorted(carpeta.glob("*.db"), reverse=True)
         self._datos["respaldos"].configure(text=f"{len(archivos)} archivo(s) en {carpeta}")
+        if self._integridad is None:
+            self._integridad = self.app.db.verificar_integridad()
         self._datos["integridad"].configure(
-            text="OK" if self.app.db.verificar_integridad() else "Revisar"
+            text="OK" if self._integridad else "Revisar"
         )
 
         filas, objetos = [], []
@@ -131,6 +134,11 @@ class VistaRespaldos(VistaBase):
         self.ejecutar(accion)
 
     def _restaurar(self) -> None:
+        if not self.app.es_admin:  # el respaldo también reemplaza a los usuarios
+            self.advertir("Sólo administradores",
+                          "Restaurar un respaldo reemplaza toda la base, incluidas "
+                          "las cuentas de usuario. Pídaselo a un administrador.")
+            return
         origen = filedialog.askopenfilename(
             parent=self, title="Seleccionar respaldo a restaurar",
             initialdir=str(dir_respaldos()),
@@ -145,7 +153,12 @@ class VistaRespaldos(VistaBase):
             texto_si="Restaurar",
         ):
             return
+        self._integridad = None
         self.ejecutar(lambda: self.app.db.restaurar(origen))
+        # el respaldo trae sus propios usuarios: la sesión puede haber dejado de valer
+        ventana = getattr(self.app, "ventana", None)
+        if ventana is not None:
+            ventana.validar_sesion()
 
     def _verificar(self) -> None:
         try:
@@ -153,6 +166,8 @@ class VistaRespaldos(VistaBase):
         except Exception as exc:  # noqa: BLE001
             self.advertir("Verificación fallida", str(exc))
             return
+        self._integridad = ok
+        self._datos["integridad"].configure(text="OK" if ok else "Revisar")
         if ok:
             self.informar("Base sana", "PRAGMA integrity_check: OK")
         else:

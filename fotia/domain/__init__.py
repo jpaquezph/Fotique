@@ -2,6 +2,8 @@
 
 from .errors import (
     AsignacionInvalidaError,
+    CredencialesInvalidasError,
+    CuentaBloqueadaError,
     DatosInvalidosError,
     EliminacionRestringidaError,
     EquipoNoDisponibleException,
@@ -21,14 +23,18 @@ from .models import (
     Pago,
     PlantillaContrato,
     Proyecto,
+    RolUsuario,
     Servicio,
     TrabajoPendiente,
+    Usuario,
 )
 
 __all__ = [
     "AsignacionInvalidaError",
     "Cliente",
     "Contrato",
+    "CredencialesInvalidasError",
+    "CuentaBloqueadaError",
     "DatosInvalidosError",
     "EliminacionRestringidaError",
     "Equipo",
@@ -44,6 +50,8 @@ __all__ = [
     "Pago",
     "PlantillaContrato",
     "Proyecto",
+    "RolUsuario",
     "Servicio",
     "TrabajoPendiente",
+    "Usuario",
 ]

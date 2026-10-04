@@ -7,7 +7,7 @@ import customtkinter as ctk
 from ...domain.models import Servicio
 from ...util import moneda
 from ..dialogs import DialogoServicio
-from ..theme import GRIS_TEXTO, ROJO
+from ..theme import GRIS_TEXTO
 from ..widgets import Tabla, boton
 from .base import VistaBase
 
@@ -27,7 +27,7 @@ class VistaServicios(VistaBase):
         barra.grid(row=0, column=0, sticky="ew", pady=(0, 8))
         boton(barra, "Nuevo servicio", self._nuevo).pack(side="left", padx=(0, 6))
         boton(barra, "Editar", self._editar).pack(side="left", padx=(0, 6))
-        boton(barra, "Eliminar", self._eliminar, color=ROJO).pack(side="left", padx=(0, 6))
+        boton(barra, "Eliminar", self._eliminar, color="peligro").pack(side="left", padx=(0, 6))
 
         self._categoria = ctk.StringVar(value="Todas las categorías")
         self._menu = ctk.CTkOptionMenu(
@@ -40,7 +40,7 @@ class VistaServicios(VistaBase):
         self._busqueda = ctk.CTkEntry(barra, width=240,
                                       placeholder_text="Buscar servicio…")
         self._busqueda.pack(side="right")
-        self._busqueda.bind("<KeyRelease>", lambda _e: self.refrescar())
+        self._busqueda.bind("<KeyRelease>", self.refrescar_diferido)
 
         columnas = [
             {"clave": "categoria", "titulo": "Categoría", "ancho": 160},

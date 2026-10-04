@@ -3,20 +3,67 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+from typing import Optional
 
 import customtkinter as ctk
 
 from ...domain.models import EstadoService
 from ...util import fecha_legible, moneda
 from ..theme import (
+    BORDE,
+    FONDO,
     GRIS_TEXTO,
     NARANJA,
     ROJO,
+    TEXTO,
     VERDE,
-    colores_tema,
+    Color,
 )
 from ..widgets import Tarjeta
 from .base import VistaBase
+
+Fila = tuple[str, str, Color]  # (principal, secundario, color)
+
+
+class _Lista:
+    """Lista de filas que reutiliza sus widgets entre refrescos.
+
+    Crear y destruir widgets de CustomTkinter es lo más caro del panel; acá las
+    filas se crean una vez y después solo se les cambia el texto.
+    """
+
+    def __init__(self, contenedor: ctk.CTkScrollableFrame):
+        self._contenedor = contenedor
+        self._filas: list[tuple[ctk.CTkFrame, ctk.CTkLabel, ctk.CTkLabel]] = []
+        self._mostrado: list[Fila] = []
+
+    def mostrar(self, filas: list[Fila]) -> None:
+        if filas == self._mostrado:
+            return
+        for indice, (principal, secundario, color) in enumerate(filas):
+            if indice == len(self._filas):
+                self._filas.append(self._crear(indice))
+            marco, lbl_principal, lbl_secundario = self._filas[indice]
+            if indice >= len(self._mostrado) or self._mostrado[indice] != filas[indice]:
+                lbl_principal.configure(text=principal, text_color=color)
+                lbl_secundario.configure(text=secundario)
+            if indice >= len(self._mostrado):
+                marco.grid()
+        for marco, _p, _s in self._filas[len(filas):len(self._mostrado)]:
+            marco.grid_remove()
+        self._mostrado = list(filas)
+
+    def _crear(self, indice: int):
+        marco = ctk.CTkFrame(self._contenedor, fg_color="transparent")
+        marco.grid(row=indice, column=0, sticky="ew", pady=3)
+        marco.grid_columnconfigure(0, weight=1)
+        principal = ctk.CTkLabel(marco, text="", font=("Segoe UI", 11), anchor="w",
+                                 wraplength=280, justify="left")
+        principal.grid(row=0, column=0, sticky="w")
+        secundario = ctk.CTkLabel(marco, text="", font=("Segoe UI", 10),
+                                  text_color=GRIS_TEXTO, anchor="e")
+        secundario.grid(row=0, column=1, sticky="e", padx=(8, 0))
+        return marco, principal, secundario
 
 
 class VistaPanel(VistaBase):
@@ -25,7 +72,6 @@ class VistaPanel(VistaBase):
     descripcion = "Estado general del estudio hoy"
 
     def _construir(self) -> None:
-        c = colores_tema()
         contenedor = ctk.CTkFrame(self, fg_color="transparent")
         contenedor.grid(row=1, column=0, sticky="nsew", padx=2)
         contenedor.grid_rowconfigure(2, weight=1)
@@ -48,18 +94,19 @@ class VistaPanel(VistaBase):
             tarjeta.grid(row=0, column=i, sticky="nsew", padx=(0 if i == 0 else 8, 0))
             self._tarjetas[clave] = tarjeta
 
-        self._panel_service = self._crear_panel(contenedor, "Alertas de service (RF-03)", 1, 0)
-        self._panel_eventos = self._crear_panel(contenedor, "Próximos eventos", 1, 1)
-        self._panel_saldos = self._crear_panel(contenedor, "Saldos por cobrar (RF-05)", 1, 2)
+        self._service = self._crear_panel(contenedor, "Alertas de service (RF-03)", 0)
+        self._eventos = self._crear_panel(contenedor, "Próximos eventos", 1)
+        self._saldos = self._crear_panel(contenedor, "Saldos por cobrar (RF-05)", 2)
 
         self._estado = ctk.CTkLabel(contenedor, text="", font=("Segoe UI", 11),
                                     text_color=GRIS_TEXTO, anchor="w")
         self._estado.grid(row=2, column=0, columnspan=3, sticky="ew", pady=(8, 0))
-        del c
+        self._estado_actual: Optional[str] = None
 
-    def _crear_panel(self, master, titulo: str, fila: int, columna: int):
-        marco = ctk.CTkFrame(master, corner_radius=10)
-        marco.grid(row=fila, column=columna, sticky="nsew", padx=(0, 8), pady=(0, 8))
+    def _crear_panel(self, master, titulo: str, columna: int) -> _Lista:
+        marco = ctk.CTkFrame(master, corner_radius=10, fg_color=FONDO,
+                             border_width=1, border_color=BORDE)
+        marco.grid(row=1, column=columna, sticky="nsew", padx=(0, 8), pady=(0, 8))
         marco.grid_rowconfigure(1, weight=1)
         marco.grid_columnconfigure(0, weight=1)
         ctk.CTkLabel(marco, text=titulo, font=("Segoe UI", 12, "bold"),
@@ -68,32 +115,14 @@ class VistaPanel(VistaBase):
         contenido = ctk.CTkScrollableFrame(marco, fg_color="transparent")
         contenido.grid(row=1, column=0, sticky="nsew", padx=8, pady=(0, 12))
         contenido.grid_columnconfigure(0, weight=1)
-        return contenido
-
-    def _fila_lista(self, contenedor, indice: int, principal: str,
-                    secundario: str = "", color: str | None = None) -> None:
-        c = colores_tema()
-        marco = ctk.CTkFrame(contenedor, fg_color="transparent")
-        marco.grid(row=indice, column=0, sticky="ew", pady=3)
-        marco.grid_columnconfigure(0, weight=1)
-        ctk.CTkLabel(marco, text=principal, font=("Segoe UI", 11),
-                     text_color=color or c["texto"], anchor="w",
-                     wraplength=280, justify="left").grid(row=0, column=0,
-                                                          sticky="w")
-        if secundario:
-            ctk.CTkLabel(marco, text=secundario, font=("Segoe UI", 10),
-                         text_color=GRIS_TEXTO, anchor="e").grid(
-                row=0, column=1, sticky="e", padx=(8, 0))
-
-    def _vaciar(self, contenedor) -> None:
-        for hijo in contenedor.winfo_children():
-            hijo.destroy()
+        return _Lista(contenido)
 
     def refrescar(self) -> None:
         hoy = date.today()
         resumen = self.repos.resumen()
         proyectos = self.repos.proyectos.listar()
-        saldo_total = sum(max(p.obtener_saldo_pendiente(), 0) for p in proyectos)
+        saldos = [(p, p.obtener_saldo_pendiente()) for p in proyectos]
+        saldo_total = sum(max(saldo, 0) for _p, saldo in saldos)
         alertas = self.repos.equipos.alertas_service(dias_aviso=30, hoy=hoy)
 
         self._tarjetas["equipos"].set_valor(resumen["equipos"])
@@ -105,63 +134,46 @@ class VistaPanel(VistaBase):
                                           color=NARANJA if saldo_total else VERDE)
 
         # -- service -------------------------------------------------------- #
-        self._vaciar(self._panel_service)
-        if not alertas:
-            self._fila_lista(self._panel_service, 0, "Sin alertas de service.",
-                             color=VERDE)
-        for indice, (equipo, estado) in enumerate(alertas):
-            color = ROJO if estado == EstadoService.VENCIDO else NARANJA
+        filas: list[Fila] = []
+        for equipo, estado in alertas:
             texto = ("Vencido" if estado == EstadoService.VENCIDO
                      else f"En {(equipo.fecha_service_proximo - hoy).days} día(s)")
             responsable = (equipo.fotografo_actual.nombre_completo
                            if equipo.fotografo_actual else "Sin asignar")
-            self._fila_lista(
-                self._panel_service, indice,
+            filas.append((
                 f"{equipo.descripcion} ({equipo.numero_serie})",
                 f"{texto} · {fecha_legible(equipo.fecha_service_proximo)} · {responsable}",
-                color=color,
-            )
+                ROJO if estado == EstadoService.VENCIDO else NARANJA,
+            ))
+        self._service.mostrar(filas or [("Sin alertas de service.", "", VERDE)])
 
         # -- eventos -------------------------------------------------------- #
-        self._vaciar(self._panel_eventos)
+        filas = []
         eventos = self.repos.eventos.consolidado(hoy, hoy + timedelta(days=21))
-        if not eventos:
-            self._fila_lista(self._panel_eventos, 0, "No hay eventos en las próximas 3 semanas.",
-                             color=GRIS_TEXTO)
-        for indice, evento in enumerate(eventos[:14]):
+        for evento in eventos[:14]:
             dias = (evento.fecha - hoy).days
-            when = ("Hoy" if dias == 0 else
-                    "Mañana" if dias == 1 else fecha_legible(evento.fecha))
-            self._fila_lista(
-                self._panel_eventos, indice,
-                evento.titulo,
-                f"{when} {evento.hora}".strip(),
-                color=NARANJA if dias <= 1 else None,
-            )
+            cuando = ("Hoy" if dias == 0 else
+                      "Mañana" if dias == 1 else fecha_legible(evento.fecha))
+            filas.append((evento.titulo, f"{cuando} {evento.hora}".strip(),
+                          NARANJA if dias <= 1 else TEXTO))
+        self._eventos.mostrar(
+            filas or [("No hay eventos en las próximas 3 semanas.", "", GRIS_TEXTO)])
 
         # -- saldos --------------------------------------------------------- #
-        self._vaciar(self._panel_saldos)
-        pendientes = sorted(
-            (p for p in proyectos if p.obtener_saldo_pendiente() > 0),
-            key=lambda p: p.obtener_saldo_pendiente(), reverse=True,
-        )
-        if not pendientes:
-            self._fila_lista(self._panel_saldos, 0, "Todos los proyectos están saldados.",
-                             color=VERDE)
-        for indice, proyecto in enumerate(pendientes[:14]):
-            self._fila_lista(
-                self._panel_saldos, indice,
-                f"{proyecto.nombre} — {proyecto.cliente}",
-                moneda(proyecto.obtener_saldo_pendiente()),
-                color=NARANJA,
-            )
+        pendientes = sorted(((p, s) for p, s in saldos if s > 0),
+                            key=lambda par: par[1], reverse=True)
+        filas = [(f"{p.nombre} — {p.cliente}", moneda(saldo), NARANJA)
+                 for p, saldo in pendientes[:14]]
+        self._saldos.mostrar(
+            filas or [("Todos los proyectos están saldados.", "", VERDE)])
 
-        self._estado.configure(
-            text=f"Base: {self.app.ruta_db} · {resumen['equipos']} equipos · "
-            f"{resumen['eventos']} eventos de agenda · "
-            f"{resumen['contratos']} contratos · actualizado "
-            f"{hoy.strftime('%d/%m/%Y')}"
-        )
+        estado = (f"Base: {self.app.ruta_db} · {resumen['equipos']} equipos · "
+                  f"{resumen['eventos']} eventos de agenda · "
+                  f"{resumen['contratos']} contratos · actualizado "
+                  f"{hoy.strftime('%d/%m/%Y')}")
+        if estado != self._estado_actual:
+            self._estado_actual = estado
+            self._estado.configure(text=estado)
 
 
 __all__ = ["VistaPanel"]

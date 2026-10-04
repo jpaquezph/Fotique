@@ -3,6 +3,34 @@
 Todo lo notable de Fotia se documenta acá.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 
+## [1.1.0] — 2026-10-04
+
+### Agregado
+
+- **Acceso con usuario y contraseña.** Al abrir una base sin usuarios se crea
+  la cuenta de administrador; después se ingresa con usuario y contraseña.
+  - Contraseñas guardadas sólo como hash PBKDF2-HMAC-SHA256 con sal propia.
+  - Bloqueo de 5 minutos tras 5 intentos fallidos.
+  - Recuperación con un código de un solo uso que se entrega al crear la
+    cuenta (y se puede regenerar desde «Mi cuenta»), o por restablecimiento de
+    un administrador con contraseña provisoria de cambio obligatorio.
+  - Roles `Administrador` y `Operador`; sólo los administradores ven la sección
+    «Usuarios» y pueden restaurar respaldos. Siempre queda al menos un
+    administrador activo.
+  - «Mi cuenta» (datos, cambio de contraseña) y «Cerrar sesión».
+
+### Cambiado
+
+- **Rendimiento.** Las vistas se construyen cuando se abren (y el resto se
+  precarga con la ventana ya visible) en lugar de armarse todas al arrancar; el
+  panel reutiliza sus filas; el calendario sólo redibuja las celdas que
+  cambian y ya no consulta la base por cada fila; las búsquedas esperan a que
+  se deje de tipear; al redimensionar sólo se recalcula la vista activa.
+- **Apariencia.** Paleta única en pares claro/oscuro: el texto y los controles
+  cambian solos con el modo (antes quedaban con los colores del arranque),
+  botones en tonos apagados en modo oscuro y tablas, tarjetas, paneles y campos
+  con el mismo fondo que la ventana.
+
 ## [1.0.0] — 2026-10-01
 
 Primera versión cerrada, alineada al SRS «Relevamiento Fotia» v2.0.

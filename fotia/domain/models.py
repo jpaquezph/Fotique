@@ -7,7 +7,7 @@ expresarse sobre un objeto vive aquí para poder testearla con ``pytest``.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
 from enum import StrEnum
 from typing import Optional
 
@@ -302,3 +302,42 @@ class Evento:
             raise DatosInvalidosError("El título del evento es obligatorio.")
         if self.fecha is None:
             raise DatosInvalidosError("La fecha del evento es obligatoria.")
+
+
+class RolUsuario(StrEnum):
+    ADMINISTRADOR = "Administrador"
+    OPERADOR = "Operador"
+
+
+@dataclass
+class Usuario:
+    """Cuenta de acceso a la aplicación (las credenciales viven sólo en la base)."""
+
+    usuario: str
+    nombre: str = ""
+    email: str = ""
+    rol: RolUsuario = RolUsuario.OPERADOR
+    activo: bool = True
+    debe_cambiar_password: bool = False
+    ultimo_acceso: Optional[datetime] = None
+    id: Optional[int] = None
+
+    def __post_init__(self) -> None:
+        self.rol = RolUsuario(self.rol)
+
+    @property
+    def es_admin(self) -> bool:
+        return self.rol == RolUsuario.ADMINISTRADOR
+
+    @property
+    def nombre_visible(self) -> str:
+        return self.nombre.strip() or self.usuario
+
+    def validar(self) -> None:
+        usuario = (self.usuario or "").strip()
+        if len(usuario) < 3:
+            raise DatosInvalidosError(
+                "El nombre de usuario debe tener al menos 3 caracteres."
+            )
+        if any(c.isspace() for c in usuario):
+            raise DatosInvalidosError("El nombre de usuario no puede tener espacios.")
