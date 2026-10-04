@@ -20,7 +20,7 @@ class EquipoNoDisponibleException(FotiaError):
 
 
 class AsignacionInvalidaError(FotiaError):
-    """Un equipo ``En uso`` requiere fotógrafo responsable (RF-01)."""
+    """Un equipo ``En uso`` requiere fotógrafo responsable."""
 
 
 class EstadoInvalidoError(FotiaError):
@@ -28,7 +28,7 @@ class EstadoInvalidoError(FotiaError):
 
 
 class EliminacionRestringidaError(FotiaError):
-    """Violación de integridad referencial de alto nivel (RNF-04)."""
+    """Violación de integridad referencial de alto nivel."""
 
 
 class CredencialesInvalidasError(FotiaError):

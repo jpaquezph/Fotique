@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import secrets
+import unicodedata
 
 from .errors import DatosInvalidosError
 
@@ -73,3 +74,14 @@ def generar_password_temporal() -> str:
         candidata = "".join(secrets.choice(_ALFABETO_TEMPORAL) for _ in range(10))
         if any(c.isalpha() for c in candidata) and any(c.isdigit() for c in candidata):
             return candidata
+
+
+def sugerir_usuario(nombre: str, apellido: str = "") -> str:
+    """``Tomás`` + ``Benítez`` ➜ ``tomas.benitez`` (sin acentos ni espacios)."""
+    partes = []
+    for parte in (nombre, apellido):
+        plano = unicodedata.normalize("NFKD", parte or "")
+        limpio = "".join(c for c in plano.lower() if c.isascii() and c.isalnum())
+        if limpio:
+            partes.append(limpio)
+    return ".".join(partes).ljust(3, "0") if partes else "usuario"

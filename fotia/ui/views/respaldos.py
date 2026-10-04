@@ -1,4 +1,4 @@
-"""RNF-05 — Respaldos, restauración y estado de la base de datos."""
+"""Respaldos, restauración y estado de la base de datos."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from .base import VistaBase
 class VistaRespaldos(VistaBase):
     clave = "respaldos"
     titulo = "Respaldo y mantenimiento"
-    descripcion = "RNF-05 · exportación e importación de la base SQLite y datos de ejemplo"
+    descripcion = "Exportación e importación de la base de datos"
 
     def _construir(self) -> None:
         contenedor = ctk.CTkFrame(self, fg_color="transparent")
@@ -34,8 +34,6 @@ class VistaRespaldos(VistaBase):
         boton_secundario(barra, "Verificar integridad", self._verificar).pack(
             side="left", padx=(0, 6))
         boton_secundario(barra, "Abrir carpeta", self._abrir_carpeta).pack(
-            side="left", padx=(0, 6))
-        boton_secundario(barra, "Cargar datos de ejemplo", self._cargar_demo).pack(
             side="left", padx=(0, 6))
 
         ficha = ctk.CTkFrame(contenedor, corner_radius=10, fg_color=FONDO,
@@ -66,7 +64,7 @@ class VistaRespaldos(VistaBase):
             {"clave": "fecha", "titulo": "Creado", "ancho": 170, "anchor": "center"},
             {"clave": "tamano", "titulo": "Tamaño", "ancho": 130, "anchor": "e"},
         ]
-        self.tabla = Tabla(contenedor, columnas, altura=9)
+        self.tabla = Tabla(contenedor, columnas, altura=4)
         self.tabla.grid(row=2, column=0, sticky="nsew")
         ctk.CTkLabel(contenedor,
                      text="Consejo: copie la carpeta de respaldos a un disco externo "
@@ -178,16 +176,3 @@ class VistaRespaldos(VistaBase):
 
         carpeta = dir_respaldos()
         os.startfile(carpeta)  # noqa: S606 - acción del usuario en Windows
-
-    def _cargar_demo(self) -> None:
-        from ...db import cargar_datos_demo
-
-        if not self.repos.esta_vacio():
-            if not self.confirmar(
-                "Datos de ejemplo",
-                "La base ya tiene registros. La carga de ejemplo agrega contenido "
-                "adicional. ¿Continuar?",
-                texto_si="Cargar",
-            ):
-                return
-        self.ejecutar(lambda: cargar_datos_demo(self.repos))

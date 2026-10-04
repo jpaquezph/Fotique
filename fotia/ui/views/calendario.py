@@ -1,4 +1,4 @@
-"""Módulo D — Calendario general del estudio (RF-08)."""
+"""Módulo D — Calendario general del estudio."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from datetime import date, timedelta
 import customtkinter as ctk
 
 from ...domain.models import Evento
-from ..dialogs import DialogoEvento, DialogoTabla
+from ..dialogs import DialogoEvento
 from ..theme import (
     BORDE,
     BOTONES,
@@ -32,8 +32,8 @@ MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
 class VistaCalendario(VistaBase):
     clave = "calendario"
     titulo = "Calendario general"
-    descripcion = ("Módulo D · eventos de clientes, entregas, service y agenda "
-                   "personal en una sola vista (RF-08)")
+    descripcion = ("Eventos de clientes, entregas, service y agenda personal "
+                   "en una sola vista")
 
     def _construir(self) -> None:
         contenedor = ctk.CTkFrame(self, fg_color="transparent")
@@ -63,8 +63,6 @@ class VistaCalendario(VistaBase):
             side="left", padx=(0, 6))
         boton(barra, "Eliminar", self._eliminar_evento, color="peligro").pack(
             side="left", padx=(0, 6))
-        boton_secundario(barra, "Ver todo el mes", self._ver_mes).pack(
-            side="left", padx=(0, 6))
 
         self._filtro = ctk.StringVar(value="Todos los fotógrafos")
         self._menu_fotografos = ctk.CTkOptionMenu(
@@ -76,8 +74,8 @@ class VistaCalendario(VistaBase):
         # -- calendario ------------------------------------------------------ #
         panel_mes = ctk.CTkFrame(contenedor, fg_color="transparent")
         panel_mes.grid(row=1, column=0, sticky="nsew", padx=(0, 10))
-        panel_mes.grid_columnconfigure(6, weight=1)
-        panel_mes.grid_rowconfigure(6, weight=1)
+        for fila in range(1, 7):
+            panel_mes.grid_rowconfigure(fila, weight=1, uniform="semana")
 
         for i, dia in enumerate(DIAS_CABECERA):
             ctk.CTkLabel(panel_mes, text=dia, font=("Segoe UI", 11, "bold"),
@@ -91,7 +89,7 @@ class VistaCalendario(VistaBase):
         for indice in range(42):
             fila, columna = divmod(indice, 7)
             celda = ctk.CTkButton(
-                panel_mes, text="", width=54, height=44, corner_radius=8,
+                panel_mes, text="", width=54, height=36, corner_radius=8,
                 font=("Segoe UI", 11), fg_color="transparent",
                 hover_color=RESALTE, text_color=TEXTO, anchor="center",
                 command=lambda i=indice: self._seleccionar_celda(i),
@@ -117,7 +115,7 @@ class VistaCalendario(VistaBase):
             {"clave": "proyecto", "titulo": "Proyecto", "ancho": 160},
         ]
         self.tabla = Tabla(panel_dia, columnas, doble_click=lambda _e: self._editar_evento(),
-                           altura=14)
+                           altura=4)
         self.tabla.grid(row=1, column=0, sticky="nsew")
 
         self._pie = ctk.CTkLabel(panel_dia, text="", font=("Segoe UI", 11),
@@ -280,33 +278,6 @@ class VistaCalendario(VistaBase):
         if not self.confirmar("Eliminar evento", f"¿Eliminar «{evento.titulo}»?"):
             return
         self.ejecutar(lambda: self.repos.eventos.eliminar(evento.id))
-
-    def _ver_mes(self) -> None:
-        fotografo_id = self._id_fotografo_filtro()
-        inicio = self._mes
-        fin = self._mes.replace(day=monthrange(self._mes.year, self._mes.month)[1])
-        eventos = self.repos.eventos.consolidado(inicio, fin, fotografo_id=fotografo_id)
-        filas = [
-            [
-                e.fecha.strftime("%d/%m/%Y"),
-                e.hora or "—",
-                e.titulo,
-                e.tipo,
-                self._nombres_fotografos.get(e.fotografo_id, "—"),
-            ]
-            for e in eventos
-        ]
-        DialogoTabla(
-            self, f"Agenda de {MESES[self._mes.month - 1]} {self._mes.year}",
-            [
-                {"clave": "fecha", "titulo": "Fecha", "ancho": 110, "anchor": "center"},
-                {"clave": "hora", "titulo": "Hora", "ancho": 80, "anchor": "center"},
-                {"clave": "titulo", "titulo": "Evento", "ancho": 340},
-                {"clave": "tipo", "titulo": "Tipo", "ancho": 110, "anchor": "center"},
-                {"clave": "fotografo", "titulo": "Fotógrafo", "ancho": 170},
-            ],
-            filas,
-        ).mostrar()
 
 
 def _tag_tipo(tipo: str) -> str:

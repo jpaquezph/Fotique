@@ -1,10 +1,10 @@
--- Fotia — Esquema SQLite (offline-first, RNF-02)
+-- Fotia — Esquema SQLite (offline-first)
 -- Idempotente: se ejecuta con IF NOT EXISTS en cada arranque.
 
 PRAGMA foreign_keys = ON;
 
 -- --------------------------------------------------------------------------- #
--- Módulo B — Fotógrafos / Personal (RF-04)
+-- Módulo B — Fotógrafos / Personal
 -- --------------------------------------------------------------------------- #
 CREATE TABLE IF NOT EXISTS fotografos (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -17,11 +17,11 @@ CREATE TABLE IF NOT EXISTS fotografos (
 );
 
 -- --------------------------------------------------------------------------- #
--- Módulo A — Inventario (RF-01 / RF-02)
+-- Módulo A — Inventario
 -- --------------------------------------------------------------------------- #
 CREATE TABLE IF NOT EXISTS equipos (
     id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-    numero_serie        TEXT    NOT NULL UNIQUE,
+    numero_serie        TEXT    UNIQUE,
     marca               TEXT    NOT NULL,
     modelo              TEXT    NOT NULL,
     fecha_adquisicion   TEXT,
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS equipos (
                             CHECK (estado IN ('En stock', 'En uso')),
     fotografo_id        INTEGER REFERENCES fotografos (id) ON DELETE RESTRICT,
     notas               TEXT    NOT NULL DEFAULT '',
-    -- RF-01: si está "En uso" el fotógrafo responsable es obligatorio.
+    -- Si está "En uso" el fotógrafo responsable es obligatorio.
     CHECK (estado = 'En stock' OR fotografo_id IS NOT NULL)
 );
 
@@ -41,11 +41,13 @@ CREATE TABLE IF NOT EXISTS historial_asignaciones (
     fotografo_id     INTEGER REFERENCES fotografos (id) ON DELETE SET NULL,
     fecha_asignacion TEXT    NOT NULL,
     fecha_devolucion TEXT,
-    observaciones    TEXT    NOT NULL DEFAULT ''
+    observaciones    TEXT    NOT NULL DEFAULT '',
+    proyecto_id      INTEGER REFERENCES proyectos (id) ON DELETE SET NULL,
+    fecha_prevista   TEXT
 );
 
 -- --------------------------------------------------------------------------- #
--- Módulo C — Clientes y Proyectos (RF-05)
+-- Módulo C — Clientes y Proyectos
 -- --------------------------------------------------------------------------- #
 CREATE TABLE IF NOT EXISTS clientes (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -70,7 +72,8 @@ CREATE TABLE IF NOT EXISTS proyectos (
     sena_medio   TEXT    NOT NULL DEFAULT '',
     direccion    TEXT    NOT NULL DEFAULT '',
     notas        TEXT    NOT NULL DEFAULT '',
-    creado_en    TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
+    creado_en    TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
+    tipo         TEXT    NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS pagos (
@@ -82,8 +85,18 @@ CREATE TABLE IF NOT EXISTS pagos (
     notas       TEXT    NOT NULL DEFAULT ''
 );
 
+CREATE TABLE IF NOT EXISTS egresos (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    fecha       TEXT    NOT NULL,
+    concepto    TEXT    NOT NULL,
+    categoria   TEXT    NOT NULL DEFAULT 'Otros',
+    monto       REAL    NOT NULL CHECK (monto > 0),
+    proyecto_id INTEGER REFERENCES proyectos (id) ON DELETE SET NULL,
+    notas       TEXT    NOT NULL DEFAULT ''
+);
+
 -- --------------------------------------------------------------------------- #
--- Módulo D — Contratos y tarifario (RF-06 / RF-07)
+-- Módulo D — Contratos y tarifario
 -- --------------------------------------------------------------------------- #
 CREATE TABLE IF NOT EXISTS plantillas_contrato (
     id       INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -112,7 +125,7 @@ CREATE TABLE IF NOT EXISTS servicios (
 );
 
 -- --------------------------------------------------------------------------- #
--- Entregas y calendario (RF-04 / RF-08)
+-- Entregas y calendario
 -- --------------------------------------------------------------------------- #
 CREATE TABLE IF NOT EXISTS trabajos_pendientes (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -122,7 +135,8 @@ CREATE TABLE IF NOT EXISTS trabajos_pendientes (
     proyecto_id   INTEGER REFERENCES proyectos (id) ON DELETE SET NULL,
     fecha_entrega TEXT,
     estado        TEXT    NOT NULL DEFAULT 'Pendiente'
-                    CHECK (estado IN ('Pendiente', 'En edición', 'Entregado'))
+                    CHECK (estado IN ('Pendiente', 'En edición', 'Entregado', 'Cancelado')),
+    rol           TEXT    NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS eventos (
@@ -151,8 +165,8 @@ CREATE TABLE IF NOT EXISTS usuarios (
     usuario            TEXT    NOT NULL UNIQUE COLLATE NOCASE,
     nombre             TEXT    NOT NULL DEFAULT '',
     email              TEXT    NOT NULL DEFAULT '',
-    rol                TEXT    NOT NULL DEFAULT 'Operador'
-                           CHECK (rol IN ('Administrador', 'Operador')),
+    rol                TEXT    NOT NULL DEFAULT 'Usuario'
+                           CHECK (rol IN ('Administrador', 'Usuario')),
     password_hash      TEXT    NOT NULL,
     codigo_hash        TEXT    NOT NULL DEFAULT '',
     activo             INTEGER NOT NULL DEFAULT 1,
@@ -160,10 +174,11 @@ CREATE TABLE IF NOT EXISTS usuarios (
     intentos_fallidos  INTEGER NOT NULL DEFAULT 0,
     bloqueado_hasta    TEXT,
     ultimo_acceso      TEXT,
-    creado_en          TEXT    NOT NULL DEFAULT (datetime('now', 'localtime'))
+    creado_en          TEXT    NOT NULL DEFAULT (datetime('now', 'localtime')),
+    fotografo_id       INTEGER REFERENCES fotografos (id) ON DELETE SET NULL
 );
 
--- Índices para el RNF-03 (listados <= 150 ms)
+-- Índices de los listados y filtros más usados
 CREATE INDEX IF NOT EXISTS idx_equipos_estado      ON equipos (estado);
 CREATE INDEX IF NOT EXISTS idx_equipos_fotografo   ON equipos (fotografo_id);
 CREATE INDEX IF NOT EXISTS idx_equipos_service     ON equipos (fecha_service_proximo);
@@ -176,3 +191,6 @@ CREATE INDEX IF NOT EXISTS idx_trabajos_estado     ON trabajos_pendientes (estad
 CREATE INDEX IF NOT EXISTS idx_trabajos_entrega    ON trabajos_pendientes (fecha_entrega);
 CREATE INDEX IF NOT EXISTS idx_eventos_fecha       ON eventos (fecha);
 CREATE INDEX IF NOT EXISTS idx_contratos_proyecto  ON contratos (proyecto_id);
+CREATE INDEX IF NOT EXISTS idx_pagos_fecha         ON pagos (fecha);
+CREATE INDEX IF NOT EXISTS idx_egresos_fecha       ON egresos (fecha);
+CREATE INDEX IF NOT EXISTS idx_hist_fecha          ON historial_asignaciones (fecha_asignacion);

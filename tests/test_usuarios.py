@@ -176,7 +176,7 @@ def test_restablecer_por_admin_obliga_a_cambiar(usuarios, admin):
 def test_siempre_queda_un_administrador_activo(usuarios, admin):
     with pytest.raises(EliminacionRestringidaError):
         usuarios.eliminar(admin.id)
-    admin.rol = RolUsuario.OPERADOR
+    admin.rol = RolUsuario.USUARIO
     with pytest.raises(EliminacionRestringidaError):
         usuarios.actualizar(admin)
     admin.rol, admin.activo = RolUsuario.ADMINISTRADOR, False

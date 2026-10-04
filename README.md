@@ -13,6 +13,7 @@ Documento de partida: [`Relevamiento Fotia.md`](Relevamiento%20Fotia.md) (SRS v2
 | `main` | Última versión estable (siempre actualizada). |
 | `dev` | Misma punta que `main`: rama de desarrollo para próximos cambios. |
 | `v1.0` | Tag de la versión 1.0.0, cerrada el 01/10/2026. |
+| `v1.2` | Tag de la versión 1.2.0 (04/10/2026). |
 
 ---
 
@@ -61,6 +62,10 @@ de alta desde la sección **Usuarios** (sólo visible para administradores).
 - **Sin código:** un administrador restablece la contraseña desde **Usuarios**;
   se genera una provisoria que el usuario debe cambiar al ingresar.
 - **Bloqueo:** 5 intentos fallidos bloquean la cuenta 5 minutos.
+- **Roles:** `Administrador` y `Usuario`. Sólo los administradores ven
+  **Usuarios** y **Resumen general**, eliminan equipos y restauran respaldos.
+- **Fotógrafos:** al dar de alta uno, el administrador elige su rol y se crea
+  su cuenta con una contraseña provisoria.
 
 Las contraseñas y los códigos se guardan sólo como hash (PBKDF2-HMAC-SHA256).
 El inicio de sesión controla el acceso a la aplicación; el archivo `fotia.db`
@@ -82,7 +87,8 @@ Pirámide de testing del SRS §4:
 3. **GUI** — `tests/test_ui.py` (ventanas, diálogos, formularios, pantalla de acceso).
 
 El acceso tiene su propia suite en `tests/test_usuarios.py` (hash, ingreso,
-bloqueo, recuperación y reglas de administración).
+bloqueo, recuperación y reglas de administración) y lo propio de la 1.2
+en `tests/test_v12.py` (migración, cobros, roles, egresos e informes).
 
 Smoke manual (no requiere pytest):
 
@@ -112,15 +118,16 @@ falsos positivos de antivirus), cambiá el `EXE(...)` final del spec por el modo
 
 ---
 
-## Módulos y requisitos cubiertos
+## Módulos
 
-| Módulo | Requisitos | Dónde |
+| Módulo | Qué hace | Dónde |
 |---|---|---|
-| A · Inventario | RF-01 ficha, RF-02 trazabilidad/historial, RF-03 alertas de service | `fotia/ui/views/equipos.py`, `fotia/db/repositories.py` |
-| B · Fotógrafos | RF-04 registro, equipos tomados, entregas pendientes | `fotia/ui/views/fotografos.py` |
-| C · Clientes y proyectos | RF-05 seña, cobros, saldo automático | `fotia/ui/views/proyectos.py` |
-| D · Generales | RF-06 contratos con plantillas, RF-07 tarifario, RF-08 calendario unificado | `fotia/ui/views/{contratos,servicios,calendario}.py` |
-| RNF | RNF-01 Python, RNF-02 SQLite offline, RNF-03 listados en SQL, RNF-04 integridad, RNF-05 respaldos | `fotia/db/`, `fotia/domain/` |
+| Inventario | Ficha de cada equipo, asignación con proyecto y fechas, historial de movimientos, alertas de service | `fotia/ui/views/equipos.py` |
+| Fotógrafos | Personal, equipos tomados, trabajos con rol, historial de entregas | `fotia/ui/views/fotografos.py` |
+| Clientes y proyectos | Tipo de proyecto, seña, cobros con tope en el total, saldo automático | `fotia/ui/views/proyectos.py` |
+| Calendario, tarifario y contratos | Agenda unificada, precios, contratos desde plantillas | `fotia/ui/views/{calendario,servicios,contratos}.py` |
+| Resumen general | Dinero, equipos, personal, clientes y contratos por período, con gráficos | `fotia/ui/views/resumen.py` |
+| Respaldos y usuarios | Exportar/restaurar la base, cuentas y roles | `fotia/ui/views/{respaldos,usuarios}.py` |
 
 ### Estructura
 
@@ -138,12 +145,14 @@ Fotia/
 │   │   └── errors.py        # excepciones de negocio
 │   ├── db/
 │   │   ├── schema.sql       # esquema SQLite (RF + índices)
-│   │   ├── connection.py    # conexión, integridad, respaldos (RNF-05)
+│   │   ├── connection.py    # conexión, integridad, respaldos
 │   │   ├── repositories.py  # CRUD + consultas
 │   │   └── seed.py          # datos de ejemplo
 │   └── ui/
 │       ├── theme.py         # paleta (pares claro/oscuro) y estilos ttk
 │       ├── acceso.py        # pantalla de ingreso, primer usuario y recuperación
+│       ├── fechas.py        # selector de fecha con calendario
+│       ├── graficos.py      # gráfico de torta
 │       ├── widgets.py       # Tabla, diálogos, campos, conversiones
 │       ├── dialogs.py       # todos los formularios modales
 │       ├── ventana_principal.py

@@ -311,7 +311,7 @@ def test_resumen_financiero_de_la_demo(repos):
     assert any(p.obtener_saldo_pendiente() > 0 for p in proyectos)
 
 
-# -- RNF-05: respaldos ------------------------------------------------------- #
+# -- Respaldos ------------------------------------------------------- #
 
 
 def test_respaldo_y_restauracion(tmp_path):

@@ -1,4 +1,4 @@
-"""Módulo D — Tarifario de servicios (RF-07)."""
+"""Módulo D — Tarifario de servicios."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from .base import VistaBase
 class VistaServicios(VistaBase):
     clave = "servicios"
     titulo = "Catálogo de servicios y precios"
-    descripcion = "Módulo D · tarifario configurable: coberturas, paquetes, edición, fotolibros y viáticos"
+    descripcion = "Tarifario configurable: coberturas, paquetes, edición, fotolibros y viáticos"
 
     def _construir(self) -> None:
         contenedor = ctk.CTkFrame(self, fg_color="transparent")
@@ -47,11 +47,10 @@ class VistaServicios(VistaBase):
             {"clave": "nombre", "titulo": "Servicio", "ancho": 300},
             {"clave": "precio", "titulo": "Precio", "ancho": 140, "anchor": "e"},
             {"clave": "unidad", "titulo": "Unidad", "ancho": 130},
-            {"clave": "estado", "titulo": "Estado", "ancho": 110, "anchor": "center"},
             {"clave": "notas", "titulo": "Notas", "ancho": 260},
         ]
         self.tabla = Tabla(contenedor, columnas, doble_click=lambda _e: self._editar(),
-                           altura=17)
+                           altura=4)
         self.tabla.grid(row=1, column=0, sticky="nsew")
 
         self._pie = ctk.CTkLabel(contenedor, text="", font=("Segoe UI", 11),
@@ -66,7 +65,7 @@ class VistaServicios(VistaBase):
         self._menu.set(actual if actual in categorias else "Todas las categorías")
 
         texto = self._busqueda.get().strip().lower()
-        filas, objetos, etiquetas = [], [], []
+        filas, objetos = [], []
         for s in servicios:
             if self._categoria.get() != "Todas las categorías" and \
                     s.categoria != self._categoria.get():
@@ -74,15 +73,12 @@ class VistaServicios(VistaBase):
             if texto and texto not in f"{s.nombre} {s.categoria}".lower():
                 continue
             filas.append([s.categoria, s.nombre, moneda(s.precio), s.unidad,
-                          "Activo" if s.activo else "Inactivo", s.notas or ""])
+                          s.notas or ""])
             objetos.append(s)
-            etiquetas.append("" if s.activo else "entregado")
-        self.tabla.actualizar(filas, objetos, etiquetas)
-        activos = sum(1 for s in objetos if s.activo)
-        promedio = (sum(s.precio for s in objetos if s.activo) / activos) if activos else 0
+        self.tabla.actualizar(filas, objetos)
+        promedio = (sum(s.precio for s in objetos) / len(objetos)) if objetos else 0
         self._pie.configure(
-            text=f"{len(objetos)} servicio(s) · {activos} activo(s) · "
-            f"precio promedio {moneda(promedio)}"
+            text=f"{len(objetos)} servicio(s) · precio promedio {moneda(promedio)}"
         )
 
     def _seleccion(self):

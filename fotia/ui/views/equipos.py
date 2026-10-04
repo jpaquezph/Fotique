@@ -1,4 +1,4 @@
-"""Módulo A — Inventario y control de equipos (RF-01, RF-02, RF-03)."""
+"""Módulo A — Inventario y control de equipos."""
 
 from __future__ import annotations
 
@@ -11,7 +11,6 @@ from ..dialogs import (
     DialogoAsignar,
     DialogoDevolver,
     DialogoEquipo,
-    DialogoFichaEquipo,
     DialogoTabla,
 )
 from ..theme import GRIS_TEXTO
@@ -22,7 +21,7 @@ from .base import VistaBase
 class VistaEquipos(VistaBase):
     clave = "equipos"
     titulo = "Inventario de equipos"
-    descripcion = "Módulo A · ficha de cada unidad, trazabilidad y alertas de service"
+    descripcion = "Ficha de cada unidad, movimientos y alertas de service"
 
     # -- construcción ------------------------------------------------------ #
     def _construir(self) -> None:
@@ -37,8 +36,10 @@ class VistaEquipos(VistaBase):
         boton(barra, "Editar", self._editar).pack(side="left", padx=(0, 6))
         boton(barra, "Asignar", self._asignar, color="exito").pack(side="left", padx=(0, 6))
         boton(barra, "Devolver", self._devolver, color="aviso").pack(side="left", padx=(0, 6))
-        boton_secundario(barra, "Ficha", self._ficha).pack(side="left", padx=(0, 6))
-        boton(barra, "Eliminar", self._eliminar, color="peligro").pack(side="left", padx=(0, 6))
+        boton_secundario(barra, "Historial", self._historial).pack(side="left", padx=(0, 6))
+        if self.app.es_admin:  # dar de baja equipos es sólo para administradores
+            boton(barra, "Eliminar", self._eliminar, color="peligro").pack(
+                side="left", padx=(0, 6))
 
         self._alertas_var = ctk.StringVar(value="Servicio: todos")
         menu = ctk.CTkOptionMenu(
@@ -62,8 +63,8 @@ class VistaEquipos(VistaBase):
             {"clave": "alerta", "titulo": "Alerta", "ancho": 120, "anchor": "center"},
             {"clave": "notas", "titulo": "Notas", "ancho": 240},
         ]
-        self.tabla = Tabla(contenedor, columnas, doble_click=lambda _e: self._ficha(),
-                           altura=16)
+        self.tabla = Tabla(contenedor, columnas, doble_click=lambda _e: self._historial(),
+                           altura=4)
         self.tabla.grid(row=1, column=0, sticky="nsew")
 
         self._pie = ctk.CTkLabel(contenedor, text="", font=("Segoe UI", 11),
@@ -95,7 +96,7 @@ class VistaEquipos(VistaBase):
                 EstadoService.EN_REGLA: "ok",
             }.get(estado_service, "")
             filas.append([
-                equipo.numero_serie,
+                equipo.numero_serie or "—",
                 equipo.descripcion,
                 str(equipo.estado),
                 equipo.fotografo_actual.nombre_completo if equipo.fotografo_actual else "—",
@@ -145,15 +146,17 @@ class VistaEquipos(VistaBase):
             self.advertir("Equipo en uso",
                           "Devuélvalo al stock antes de asignarlo a otra persona.")
             return
-        fotografos = [f for f in self.repos.fotografos.listar() if f.activo]
+        fotografos = self.repos.fotografos.listar()
         if not fotografos:
             self.advertir("Sin fotógrafos", "Registre un fotógrafo antes de asignar equipos.")
             return
-        datos = DialogoAsignar(self, equipo, fotografos).mostrar()
+        datos = DialogoAsignar(self, equipo, fotografos,
+                               self.repos.proyectos.listar()).mostrar()
         if datos is None:
             return
         self.ejecutar(lambda: self.repos.equipos.asignar(
-            equipo.id, datos["fotografo_id"], datos["fecha"], datos["observaciones"]))
+            equipo.id, datos["fotografo_id"], datos["fecha"], datos["observaciones"],
+            proyecto_id=datos["proyecto_id"], fecha_prevista=datos["fecha_prevista"]))
 
     def _devolver(self) -> None:
         equipo = self._seleccion()
@@ -168,43 +171,55 @@ class VistaEquipos(VistaBase):
         self.ejecutar(lambda: self.repos.equipos.devolver(
             equipo.id, datos["fecha"], datos["observaciones"]))
 
-    def _ficha(self) -> None:
+    def _historial(self) -> None:
         equipo = self._seleccion()
         if equipo is None:
             return
-        historial = self.repos.equipos.historial(equipo_id=equipo.id)
-        DialogoFichaEquipo(self, equipo, historial).mostrar()
+        self._mostrar_movimientos(
+            f"Historial de movimientos — {equipo.nombre}",
+            self.repos.equipos.historial(equipo_id=equipo.id))
 
     def _historial_global(self) -> None:
+        self._mostrar_movimientos("Historial de movimientos de equipos",
+                                  self.repos.equipos.historial())
+
+    def _mostrar_movimientos(self, titulo: str, movimientos) -> None:
         filas = [
             [
-                f"{r['marca']} {r['modelo']} ({r['numero_serie']})",
+                f"{r['marca']} {r['modelo']}"
+                + (f" ({r['numero_serie']})" if r["numero_serie"] else ""),
                 f"{r['f_nombre'] or ''} {r['f_apellido'] or ''}".strip() or "—",
+                r["p_titulo"] or "—",
                 _fecha_o_guion(r["fecha_asignacion"]),
-                _fecha_o_guion(r["fecha_devolucion"]) or "En uso",
+                _fecha_o_guion(r["fecha_prevista"]),
+                _fecha_o_guion(r["fecha_devolucion"]) if r["fecha_devolucion"] else "En uso",
                 r["observaciones"] or "",
             ]
-            for r in self.repos.equipos.historial()
+            for r in movimientos
         ]
         DialogoTabla(
-            self,
-            "Historial de movimientos de stock",
+            self, titulo,
             [
-                {"clave": "equipo", "titulo": "Equipo", "ancho": 220},
-                {"clave": "fotografo", "titulo": "Fotógrafo", "ancho": 170},
-                {"clave": "salida", "titulo": "Asignado", "ancho": 110, "anchor": "center"},
-                {"clave": "devuelto", "titulo": "Devuelto", "ancho": 110, "anchor": "center"},
-                {"clave": "obs", "titulo": "Observaciones", "ancho": 300},
+                {"clave": "equipo", "titulo": "Equipo", "ancho": 200},
+                {"clave": "fotografo", "titulo": "Fotógrafo", "ancho": 140},
+                {"clave": "proyecto", "titulo": "Proyecto", "ancho": 170},
+                {"clave": "retiro", "titulo": "Retiro", "ancho": 95, "anchor": "center"},
+                {"clave": "entrega", "titulo": "Entrega", "ancho": 95, "anchor": "center"},
+                {"clave": "devuelto", "titulo": "Devuelto", "ancho": 95, "anchor": "center"},
+                {"clave": "obs", "titulo": "Observaciones", "ancho": 200},
             ],
-            filas,
+            filas, ancho=1040,
         ).mostrar()
 
     def _eliminar(self) -> None:
         equipo = self._seleccion()
         if equipo is None:
             return
-        if not self.confirmar("Eliminar equipo",
-                              f"¿Dar de baja {equipo.descripcion} ({equipo.numero_serie})?"):
+        if not self.app.es_admin:
+            self.advertir("Sólo administradores",
+                          "Dar de baja un equipo requiere una cuenta de administrador.")
+            return
+        if not self.confirmar("Eliminar equipo", f"¿Dar de baja {equipo.nombre}?"):
             return
         self.ejecutar(lambda: self.repos.equipos.eliminar(equipo.id))
 

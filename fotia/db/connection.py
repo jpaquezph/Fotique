@@ -11,6 +11,79 @@ from ..util import dir_respaldos, ruta_base_datos
 
 ESQUEMA = Path(__file__).with_name("schema.sql").read_text(encoding="utf-8")
 
+# Versión del esquema (PRAGMA user_version). 1 = Fotia 1.0/1.1, 2 = Fotia 1.2.
+VERSION_ESQUEMA = 2
+
+# Tablas cuya definición cambió en la v2 (CHECK o NOT NULL: SQLite exige
+# reconstruirlas) y cómo se copia cada columna que necesita conversión.
+_RECONSTRUIR_V2 = {
+    "equipos": {"numero_serie": "NULLIF(TRIM(numero_serie), '')"},
+    "trabajos_pendientes": {},
+    "usuarios": {"rol": "CASE rol WHEN 'Operador' THEN 'Usuario' ELSE rol END"},
+}
+_COLUMNAS_NUEVAS_V2 = {
+    "historial_asignaciones": [
+        ("proyecto_id", "INTEGER REFERENCES proyectos (id) ON DELETE SET NULL"),
+        ("fecha_prevista", "TEXT"),
+    ],
+    "proyectos": [("tipo", "TEXT NOT NULL DEFAULT ''")],
+}
+
+
+def _columnas(conn: sqlite3.Connection, tabla: str) -> list[str]:
+    return [fila[1] for fila in conn.execute(f"PRAGMA table_info({tabla})")]
+
+
+def _migrar_a_v2(conn: sqlite3.Connection) -> None:
+    """Lleva una base de Fotia 1.0/1.1 al esquema de la 1.2 sin perder datos."""
+    conn.commit()
+    conn.execute("PRAGMA foreign_keys = OFF")
+    # Sin esto, RENAME reescribiría las referencias de las demás tablas hacia
+    # la copia vieja que después se borra.
+    conn.execute("PRAGMA legacy_alter_table = ON")
+    try:
+        for tabla, columnas in _COLUMNAS_NUEVAS_V2.items():
+            existentes = _columnas(conn, tabla)
+            for nombre, definicion in columnas:
+                if nombre not in existentes:
+                    conn.execute(f"ALTER TABLE {tabla} ADD COLUMN {nombre} {definicion}")
+        viejas = [t for t in _RECONSTRUIR_V2 if _columnas(conn, t)]
+        for tabla in viejas:
+            conn.execute(f"ALTER TABLE {tabla} RENAME TO {tabla}_v1")
+        conn.executescript(ESQUEMA)  # crea las tablas con la definición nueva
+        conn.execute("PRAGMA foreign_keys = OFF")  # el script lo vuelve a activar
+        for tabla in viejas:
+            comunes = [c for c in _columnas(conn, f"{tabla}_v1")
+                       if c in _columnas(conn, tabla)]
+            origen = [_RECONSTRUIR_V2[tabla].get(c, c) for c in comunes]
+            conn.execute(
+                f"INSERT INTO {tabla} ({', '.join(comunes)}) "
+                f"SELECT {', '.join(origen)} FROM {tabla}_v1"
+            )
+            conn.execute(f"DROP TABLE {tabla}_v1")  # se lleva sus índices
+        conn.commit()
+    finally:
+        conn.execute("PRAGMA legacy_alter_table = OFF")
+        conn.execute("PRAGMA foreign_keys = ON")
+
+
+def _preparar_esquema(conn: sqlite3.Connection, destino: str) -> None:
+    version = conn.execute("PRAGMA user_version").fetchone()[0]
+    es_base_existente = bool(_columnas(conn, "equipos"))
+    if es_base_existente and version < VERSION_ESQUEMA:
+        if destino != ":memory:":  # copia de seguridad antes de tocar tablas
+            copia = Path(destino).with_suffix(Path(destino).suffix + ".antes-de-v2")
+            if not copia.exists():
+                respaldo = sqlite3.connect(copia)
+                try:
+                    conn.backup(respaldo)
+                finally:
+                    respaldo.close()
+        _migrar_a_v2(conn)
+    conn.executescript(ESQUEMA)
+    conn.execute(f"PRAGMA user_version = {VERSION_ESQUEMA}")
+    conn.commit()
+
 
 def conectar(ruta: Union[str, Path, None] = None) -> sqlite3.Connection:
     """Abre (creando si hace falta) la base y aplica el esquema."""
@@ -20,13 +93,12 @@ def conectar(ruta: Union[str, Path, None] = None) -> sqlite3.Connection:
     conn = sqlite3.connect(destino)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
-    conn.executescript(ESQUEMA)
-    conn.commit()
+    _preparar_esquema(conn, destino)
     return conn
 
 
 class BaseDatos:
-    """Administra la conexión, los repositorios y los respaldos (RNF-05)."""
+    """Administra la conexión, los repositorios y los respaldos."""
 
     def __init__(self, ruta: Union[str, Path, None] = None):
         self.ruta = str(ruta) if ruta is not None else str(ruta_base_datos())
@@ -71,7 +143,7 @@ class BaseDatos:
             otra.close()
 
     def respaldar(self, destino: Union[str, Path, None] = None) -> Path:
-        """RNF-05: exporta la base completa a un archivo ``.db``/``.sqlite``."""
+        """Exporta la base completa a un archivo ``.db``/``.sqlite``."""
         if destino is None:
             from ..util import a_texto
 
@@ -95,7 +167,7 @@ class BaseDatos:
         return destino
 
     def restaurar(self, origen: Union[str, Path]) -> None:
-        """RNF-05: reemplaza la base activa por un respaldo válido."""
+        """Reemplaza la base activa por un respaldo válido."""
         origen = Path(origen)
         if not self.verificar_integridad(origen):
             raise ErrorBackups(f"El archivo dañado o no es una base válida: {origen}")

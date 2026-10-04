@@ -1,4 +1,4 @@
-"""Módulo C — Clientes y proyectos (RF-05) con control de seña y saldos."""
+"""Módulo C — Clientes y proyectos con control de seña y saldos."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from .base import VistaBase
 class VistaProyectos(VistaBase):
     clave = "proyectos"
     titulo = "Clientes y proyectos"
-    descripcion = "Módulo C · seña, cobros parciales y saldo pendiente (RF-05)"
+    descripcion = "Seña, cobros parciales y saldo pendiente de cada proyecto"
 
     def _construir(self) -> None:
         contenedor = ctk.CTkFrame(self, fg_color="transparent")
@@ -70,7 +70,8 @@ class VistaProyectos(VistaBase):
         self._panel_clientes = ctk.CTkFrame(contenedor, fg_color="transparent")
 
         columnas_p = [
-            {"clave": "titulo", "titulo": "Proyecto", "ancho": 210},
+            {"clave": "titulo", "titulo": "Proyecto", "ancho": 200},
+            {"clave": "tipo", "titulo": "Tipo", "ancho": 105},
             {"clave": "cliente", "titulo": "Cliente", "ancho": 150},
             {"clave": "fecha", "titulo": "Evento", "ancho": 100, "anchor": "center"},
             {"clave": "estado", "titulo": "Estado", "ancho": 105, "anchor": "center"},
@@ -81,7 +82,7 @@ class VistaProyectos(VistaBase):
             {"clave": "saldo", "titulo": "Saldo", "ancho": 120, "anchor": "e"},
         ]
         self.tabla = Tabla(self._panel_proyectos, columnas_p,
-                           doble_click=lambda _e: self._detalles(), altura=16)
+                           doble_click=lambda _e: self._detalles(), altura=4)
         self.tabla.grid(row=0, column=0, sticky="nsew")
         self._panel_proyectos.grid_rowconfigure(0, weight=1)
         self._panel_proyectos.grid_columnconfigure(0, weight=1)
@@ -95,7 +96,7 @@ class VistaProyectos(VistaBase):
         ]
         self.tabla_clientes = Tabla(self._panel_clientes, columnas_c,
                                     doble_click=lambda _e: self._editar_cliente(),
-                                    altura=16)
+                                    altura=4)
         self.tabla_clientes.grid(row=0, column=0, sticky="nsew")
         self._panel_clientes.grid_rowconfigure(0, weight=1)
         self._panel_clientes.grid_columnconfigure(0, weight=1)
@@ -133,13 +134,14 @@ class VistaProyectos(VistaBase):
         filas, objetos, etiquetas = [], [], []
         saldo_total = 0.0
         for p in proyectos:
-            referencia = f"{p.titulo} {p.cliente}".lower()
+            referencia = f"{p.titulo} {p.cliente} {p.tipo}".lower()
             if texto and texto not in referencia:
                 continue
             saldo = p.obtener_saldo_pendiente()
             saldo_total += max(saldo, 0)
             filas.append([
                 p.titulo or "—",
+                p.tipo or "—",
                 p.cliente,
                 p.fecha_evento.strftime("%d/%m/%Y") if p.fecha_evento else "—",
                 str(p.estado),
@@ -183,7 +185,8 @@ class VistaProyectos(VistaBase):
             self.advertir("Sin clientes",
                           "Primero registre un cliente en la pestaña Clientes.")
             return
-        proyecto = DialogoProyecto(self, clientes, self.repos.fotografos.listar()).mostrar()
+        proyecto = DialogoProyecto(self, clientes, self.repos.fotografos.listar(),
+                                   tipos=self.repos.proyectos.tipos()).mostrar()
         if proyecto is None:
             return
         self.ejecutar(lambda: self.repos.proyectos.crear(proyecto))
@@ -193,7 +196,8 @@ class VistaProyectos(VistaBase):
         if proyecto is None:
             return
         editado = DialogoProyecto(
-            self, self.repos.clientes.listar(), self.repos.fotografos.listar(), proyecto
+            self, self.repos.clientes.listar(), self.repos.fotografos.listar(), proyecto,
+            tipos=self.repos.proyectos.tipos(),
         ).mostrar()
         if editado is None:
             return
@@ -209,6 +213,10 @@ class VistaProyectos(VistaBase):
     def _registrar_pago(self) -> None:
         proyecto = self._seleccion_proyecto()
         if proyecto is None:
+            return
+        if proyecto.obtener_saldo_pendiente() <= 0:
+            self.advertir("Proyecto saldado",
+                          "Lo abonado ya cubre el cobro total: no admite más pagos.")
             return
         datos = DialogoPago(self, proyecto).mostrar()
         if datos is None:

@@ -79,9 +79,11 @@ def test_devolver_equipo_ya_en_stock_lanza_excepcion():
         equipo.devolver()
 
 
-def test_numero_serie_obligatorio():
-    with pytest.raises(DatosInvalidosError):
-        Equipo(numero_serie="  ", marca="Sony", modelo="A7")
+def test_numero_serie_opcional():
+    equipo = Equipo(numero_serie="  ", marca="Sony", modelo="A7")
+    assert equipo.numero_serie == ""
+    assert equipo.nombre == "Sony A7"
+    assert Equipo(numero_serie="SN9", marca="Sony", modelo="A7").nombre == "Sony A7 (SN9)"
 
 
 def test_alertas_de_service_vencido_y_proximo():

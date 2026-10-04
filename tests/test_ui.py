@@ -118,7 +118,8 @@ def test_dialogo_de_pago_valida_monto(app):
     from fotia.domain.errors import DatosInvalidosError
     from fotia.ui.dialogs import DialogoPago
 
-    proyecto = app.repos.proyectos.listar()[0]
+    proyecto = max(app.repos.proyectos.listar(),
+                   key=lambda p: p.obtener_saldo_pendiente())
     dialogo = DialogoPago(app.ventana, proyecto)
     dialogo.update()
     with pytest.raises(DatosInvalidosError):
@@ -127,7 +128,71 @@ def test_dialogo_de_pago_valida_monto(app):
     dialogo._campos["monto"].insert(0, "150.000,50")
     datos = dialogo._guardar()
     assert datos["monto"] == 150000.5
+
+    dialogo._campos["monto"].delete(0, "end")
+    dialogo._campos["monto"].insert(0, str(proyecto.obtener_saldo_pendiente() + 1))
+    with pytest.raises(DatosInvalidosError):  # supera el cobro total
+        dialogo._guardar()
     dialogo.destroy()
+
+
+def test_las_fechas_se_eligen_del_calendario(app):
+    from datetime import date
+
+    from fotia.ui.dialogs import DialogoAsignar
+    from fotia.ui.fechas import Calendario, SelectorFecha
+
+    equipo = app.repos.equipos.listar()[-1]
+    dialogo = DialogoAsignar(app.ventana, equipo, app.repos.fotografos.listar(),
+                             app.repos.proyectos.listar())
+    dialogo.update()
+    retiro, entrega = dialogo._campos["retiro"], dialogo._campos["entrega"]
+    assert isinstance(retiro, SelectorFecha)
+    assert retiro.fecha() == date.today() and entrega.fecha() is None
+
+    elegidas = []
+    calendario = Calendario(dialogo, date(2026, 10, 4), elegidas.append)
+    calendario._subir_nivel()            # días ➜ años
+    calendario._mover(-1)                # página anterior de años
+    calendario._ir_a(anio=2011)          # ➜ meses
+    calendario._ir_a(mes=3)              # ➜ días de marzo de 2011
+    assert (calendario._anio, calendario._mes, calendario._modo) == (2011, 3, "dias")
+    calendario._elegir(date(2011, 3, 15))
+    assert elegidas == [date(2011, 3, 15)]
+
+    dialogo.poner_fecha("entrega", date(2020, 1, 1))
+    with pytest.raises(Exception):       # entrega anterior al retiro
+        dialogo._guardar()
+    dialogo.poner_fecha("entrega", date.today())
+    datos = dialogo._guardar()
+    assert datos["fecha"] == datos["fecha_prevista"] == date.today()
+    assert datos["proyecto_id"] is None
+    dialogo.destroy()
+
+
+def test_resumen_general_recorre_sus_secciones(app):
+    from fotia.ui.views.resumen import PERIODOS, SECCIONES, rango_periodo
+    from datetime import date
+
+    vista = app.ventana.vistas["resumen"]
+    app.ventana.mostrar("resumen")
+    for seccion in SECCIONES:
+        vista._seccion.set(seccion)
+        vista._mostrar_seccion()
+        app.ventana.update()
+    vista._seccion.set("Dinero")
+    vista._periodo.set("Todo")
+    vista._mostrar_seccion()
+    movimientos = app.repos.informes.movimientos()
+    assert len(vista.tabla_movimientos.tree.get_children()) == len(movimientos)
+    assert vista.torta_dinero._datos  # los ingresos del estudio de ejemplo
+
+    assert rango_periodo("Este mes", date(2026, 2, 10)) == (
+        date(2026, 2, 1), date(2026, 2, 28))
+    assert rango_periodo("Año pasado", date(2026, 2, 10)) == (
+        date(2025, 1, 1), date(2025, 12, 31))
+    assert rango_periodo("Todo") == (None, None)
+    assert set(PERIODOS) >= {"Este mes", "Todo"}
 
 
 def test_selector_de_objetos_devuelve_el_elegido(app):
@@ -188,6 +253,17 @@ def test_parsear_fecha_y_monto():
 # -- acceso (al final: reemplaza la sesión de la ventana compartida) --------- #
 
 
+def _textos_de_botones(widget) -> set[str]:
+    import customtkinter as ctk
+
+    textos = set()
+    for hijo in widget.winfo_children():
+        if isinstance(hijo, ctk.CTkButton):
+            textos.add(hijo.cget("text"))
+        textos |= _textos_de_botones(hijo)
+    return textos
+
+
 def _completar(acceso, **valores):
     for clave, valor in valores.items():
         acceso._campos[clave].delete(0, "end")
@@ -222,6 +298,8 @@ def test_acceso_primer_usuario_ingreso_y_roles(app, monkeypatch):
 
     # contraseña incorrecta y luego ingreso de un operador
     app.repos.usuarios.crear(Usuario(usuario="marina"), "marina2026")
+    assert "resumen" in ventana.vistas and "Eliminar" in _textos_de_botones(
+        ventana.vistas["equipos"])
     ventana.cerrar_sesion()
     acceso = ventana._acceso
     _completar(acceso, usuario="marina", password="incorrecta1")
@@ -234,7 +312,9 @@ def test_acceso_primer_usuario_ingreso_y_roles(app, monkeypatch):
     ventana.update()
     assert app.usuario.usuario == "marina"
     assert "usuarios" not in ventana.vistas  # sólo administradores
+    assert "resumen" not in ventana.vistas
     assert "usuarios" not in ventana._botones
+    assert "Eliminar" not in _textos_de_botones(ventana.vistas["equipos"])
 
 
 def test_acceso_recupera_la_password_con_el_codigo(app, monkeypatch):

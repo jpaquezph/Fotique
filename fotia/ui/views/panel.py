@@ -10,13 +10,16 @@ import customtkinter as ctk
 from ...domain.models import EstadoService
 from ...util import fecha_legible, moneda
 from ..theme import (
+    ACENTO,
     BORDE,
     FONDO,
     GRIS_TEXTO,
     NARANJA,
     ROJO,
     TEXTO,
+    TURQUESA,
     VERDE,
+    VIOLETA,
     Color,
 )
 from ..widgets import Tarjeta
@@ -32,8 +35,10 @@ class _Lista:
     filas se crean una vez y después solo se les cambia el texto.
     """
 
-    def __init__(self, contenedor: ctk.CTkScrollableFrame):
+    def __init__(self, contenedor: ctk.CTkScrollableFrame, *, apilado: bool = False):
+        """``apilado`` pone el detalle debajo del texto principal (filas largas)."""
         self._contenedor = contenedor
+        self._apilado = apilado
         self._filas: list[tuple[ctk.CTkFrame, ctk.CTkLabel, ctk.CTkLabel]] = []
         self._mostrado: list[Fila] = []
 
@@ -57,12 +62,16 @@ class _Lista:
         marco = ctk.CTkFrame(self._contenedor, fg_color="transparent")
         marco.grid(row=indice, column=0, sticky="ew", pady=3)
         marco.grid_columnconfigure(0, weight=1)
-        principal = ctk.CTkLabel(marco, text="", font=("Segoe UI", 11), anchor="w",
+        principal = ctk.CTkLabel(marco, text="", font=("Segoe UI", 11, "bold"), anchor="w",
                                  wraplength=280, justify="left")
         principal.grid(row=0, column=0, sticky="w")
-        secundario = ctk.CTkLabel(marco, text="", font=("Segoe UI", 10),
+        secundario = ctk.CTkLabel(marco, text="", font=("Segoe UI", 10, "bold"),
                                   text_color=GRIS_TEXTO, anchor="e")
-        secundario.grid(row=0, column=1, sticky="e", padx=(8, 0))
+        if self._apilado:
+            secundario.configure(anchor="w")
+            secundario.grid(row=1, column=0, sticky="w")
+        else:
+            secundario.grid(row=0, column=1, sticky="e", padx=(8, 0))
         return marco, principal, secundario
 
 
@@ -74,48 +83,51 @@ class VistaPanel(VistaBase):
     def _construir(self) -> None:
         contenedor = ctk.CTkFrame(self, fg_color="transparent")
         contenedor.grid(row=1, column=0, sticky="nsew", padx=2)
-        contenedor.grid_rowconfigure(2, weight=1)
-        contenedor.grid_columnconfigure(2, weight=1)
+        contenedor.grid_rowconfigure(1, weight=1)
+        for columna in range(3):
+            contenedor.grid_columnconfigure(columna, weight=1, uniform="panel")
 
         self._tarjetas: dict[str, Tarjeta] = {}
         fila_tarjetas = ctk.CTkFrame(contenedor, fg_color="transparent")
         fila_tarjetas.grid(row=0, column=0, columnspan=3, sticky="ew", pady=(0, 14))
         for i in range(6):
             fila_tarjetas.grid_columnconfigure(i, weight=1, uniform="tarjeta")
-        for i, (clave, titulo) in enumerate([
-            ("equipos", "Equipos"),
-            ("en_uso", "En uso"),
-            ("fotografos", "Fotógrafos"),
-            ("proyectos", "Proyectos"),
-            ("entregas", "Entregas abiertas"),
-            ("saldo", "Saldo a cobrar"),
+        for i, (clave, titulo, color) in enumerate([
+            ("equipos", "Equipos", ACENTO),
+            ("en_uso", "En uso", NARANJA),
+            ("fotografos", "Fotógrafos", VIOLETA),
+            ("proyectos", "Proyectos", TURQUESA),
+            ("entregas", "Entregas abiertas", ROJO),
+            ("saldo", "Saldo a cobrar", VERDE),
         ]):
-            tarjeta = Tarjeta(fila_tarjetas, titulo)
+            tarjeta = Tarjeta(fila_tarjetas, titulo, color=color)
             tarjeta.grid(row=0, column=i, sticky="nsew", padx=(0 if i == 0 else 8, 0))
             self._tarjetas[clave] = tarjeta
 
-        self._service = self._crear_panel(contenedor, "Alertas de service (RF-03)", 0)
+        self._service = self._crear_panel(contenedor, "Alertas de service", 0,
+                                          apilado=True)
         self._eventos = self._crear_panel(contenedor, "Próximos eventos", 1)
-        self._saldos = self._crear_panel(contenedor, "Saldos por cobrar (RF-05)", 2)
+        self._saldos = self._crear_panel(contenedor, "Saldos por cobrar", 2)
 
-        self._estado = ctk.CTkLabel(contenedor, text="", font=("Segoe UI", 11),
+        self._estado = ctk.CTkLabel(contenedor, text="", font=("Segoe UI", 11, "bold"),
                                     text_color=GRIS_TEXTO, anchor="w")
         self._estado.grid(row=2, column=0, columnspan=3, sticky="ew", pady=(8, 0))
         self._estado_actual: Optional[str] = None
 
-    def _crear_panel(self, master, titulo: str, columna: int) -> _Lista:
+    def _crear_panel(self, master, titulo: str, columna: int, *,
+                     apilado: bool = False) -> _Lista:
         marco = ctk.CTkFrame(master, corner_radius=10, fg_color=FONDO,
                              border_width=1, border_color=BORDE)
         marco.grid(row=1, column=columna, sticky="nsew", padx=(0, 8), pady=(0, 8))
         marco.grid_rowconfigure(1, weight=1)
         marco.grid_columnconfigure(0, weight=1)
-        ctk.CTkLabel(marco, text=titulo, font=("Segoe UI", 12, "bold"),
+        ctk.CTkLabel(marco, text=titulo, font=("Segoe UI", 13, "bold"),
                      anchor="w").grid(row=0, column=0, sticky="ew", padx=14,
                                       pady=(12, 4))
         contenido = ctk.CTkScrollableFrame(marco, fg_color="transparent")
         contenido.grid(row=1, column=0, sticky="nsew", padx=8, pady=(0, 12))
         contenido.grid_columnconfigure(0, weight=1)
-        return _Lista(contenido)
+        return _Lista(contenido, apilado=apilado)
 
     def refrescar(self) -> None:
         hoy = date.today()
@@ -130,8 +142,7 @@ class VistaPanel(VistaBase):
         self._tarjetas["fotografos"].set_valor(resumen["fotografos"])
         self._tarjetas["proyectos"].set_valor(resumen["proyectos"])
         self._tarjetas["entregas"].set_valor(resumen["trabajos_abiertos"])
-        self._tarjetas["saldo"].set_valor(moneda(saldo_total),
-                                          color=NARANJA if saldo_total else VERDE)
+        self._tarjetas["saldo"].set_valor(moneda(saldo_total))
 
         # -- service -------------------------------------------------------- #
         filas: list[Fila] = []
@@ -141,7 +152,7 @@ class VistaPanel(VistaBase):
             responsable = (equipo.fotografo_actual.nombre_completo
                            if equipo.fotografo_actual else "Sin asignar")
             filas.append((
-                f"{equipo.descripcion} ({equipo.numero_serie})",
+                equipo.nombre,
                 f"{texto} · {fecha_legible(equipo.fecha_service_proximo)} · {responsable}",
                 ROJO if estado == EstadoService.VENCIDO else NARANJA,
             ))

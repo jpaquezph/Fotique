@@ -22,6 +22,7 @@ from .theme import (
     TEXTO,
     TEXTO_BOTON,
     aplicar_estilo_tabla,
+    area_de_trabajo,
     configurar_apariencia,
 )
 from .widgets import boton_secundario
@@ -35,10 +36,11 @@ MENU_NAVEGACION = [
     ("servicios", "Tarifario"),
     ("contratos", "Contratos"),
     ("respaldos", "Respaldo y datos"),
+    ("resumen", "Resumen general"),
     ("usuarios", "Usuarios"),
 ]
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 
 
 class _Vistas(Mapping):
@@ -77,10 +79,12 @@ class VentanaPrincipal(ctk.CTk):
         # El tamaño inicial no supera la pantalla: si no, el pie de la barra
         # lateral (sesión y apariencia) queda fuera de la vista.
         escala = self._get_window_scaling()
-        ancho = int(min(1360, self.winfo_screenwidth() / escala - 40))
-        alto = int(min(860, self.winfo_screenheight() / escala - 110))
-        self.geometry(f"{ancho}x{alto}")
-        self.minsize(min(1140, ancho), min(720, alto))
+        x0, y0, ancho_area, alto_area = area_de_trabajo(self)
+        ancho = int(min(1360, ancho_area / escala - 20))
+        alto = int(min(860, alto_area / escala - 64))  # barra de título y menú
+        x = x0 + int((ancho_area - ancho * escala) / 2)
+        self.geometry(f"{ancho}x{alto}+{max(x0, x)}+{y0}")
+        self.minsize(min(1140, ancho), min(600, alto))
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
         aplicar_estilo_tabla(self)
@@ -190,12 +194,12 @@ class VentanaPrincipal(ctk.CTk):
             if clave not in permitidas:
                 continue
             btn = ctk.CTkButton(
-                lateral, text=texto, anchor="w", height=34, corner_radius=8,
+                lateral, text=texto, anchor="w", height=32, corner_radius=8,
                 font=FUENTE_SUBTITULO, fg_color="transparent",
                 hover_color=RESALTE, text_color=TEXTO,
                 command=lambda k=clave: self.mostrar(k),
             )
-            btn.pack(fill="x", padx=14, pady=2)
+            btn.pack(fill="x", padx=14, pady=1)
             self._botones[clave] = btn
 
         divisor = ctk.CTkFrame(lateral, width=1, corner_radius=0, fg_color=BORDE)

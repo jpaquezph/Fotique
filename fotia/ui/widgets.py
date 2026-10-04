@@ -9,7 +9,7 @@ import customtkinter as ctk
 from tkinter import ttk
 
 from ..domain.errors import DatosInvalidosError, FotiaError
-from ..util import fecha_legible
+from .fechas import SelectorFecha
 from .theme import (
     ACENTO,
     BORDE,
@@ -25,6 +25,7 @@ from .theme import (
     TEXTO,
     TEXTO_BOTON,
     TEXTO_SUAVE,
+    area_de_trabajo,
     colores_etiquetas,
 )
 
@@ -229,18 +230,20 @@ class Tarjeta(ctk.CTkFrame):
     def __init__(self, master: Any, titulo: str, valor: Any = "0",
                  *, color: Optional[str] = None):
         super().__init__(master, corner_radius=10, height=96, fg_color=FONDO,
-                         border_width=1, border_color=BORDE)
+                         border_width=2 if color else 1, border_color=color or BORDE)
         self.grid_propagate(False)
-        self._actual = (str(valor), color or TEXTO)
-        self._titulo = ctk.CTkLabel(self, text=titulo.upper(), font=("Segoe UI", 10),
-                                    text_color=GRIS_TEXTO, anchor="w")
+        self._color = color or TEXTO
+        self._actual = (str(valor), self._color)
+        self._titulo = ctk.CTkLabel(self, text=titulo.upper(),
+                                    font=("Segoe UI", 10, "bold"),
+                                    text_color=color or GRIS_TEXTO, anchor="w")
         self._valor = ctk.CTkLabel(self, text=str(valor), font=("Segoe UI", 24, "bold"),
                                    text_color=color or TEXTO, anchor="w")
         self._titulo.pack(fill="x", padx=14, pady=(12, 0))
         self._valor.pack(fill="x", padx=14, pady=(2, 12))
 
     def set_valor(self, valor: Any, color: Optional[tuple] = None) -> None:
-        nuevo = (str(valor), color or TEXTO)
+        nuevo = (str(valor), color or self._color)
         if nuevo != self._actual:  # redibujar un CTkLabel es caro: solo si cambió
             self._actual = nuevo
             self._valor.configure(text=nuevo[0], text_color=nuevo[1])
@@ -298,7 +301,15 @@ class Dialogo(ctk.CTkToplevel):
         super().__init__(master)
         self.withdraw()
         self.title(titulo)
-        self.geometry(f"{ancho}x{alto}")
+        # Nunca más alto que la pantalla (el formulario tiene barra de
+        # desplazamiento) y centrado, para que los botones queden a la vista.
+        escala = self._get_window_scaling()
+        x0, y0, ancho_area, alto_area = area_de_trabajo(self)
+        ancho = int(min(ancho, ancho_area / escala - 20))
+        alto = int(min(alto, alto_area / escala - 44))  # deja lugar a la barra de título
+        x = x0 + int((ancho_area - ancho * escala) / 2)
+        y = y0 + int(max(0, (alto_area - alto * escala) / 2 - 20 * escala))
+        self.geometry(f"{ancho}x{alto}+{max(x0, x)}+{y}")
         self.resizable(False, False)
         self.transient(master)
         self.resultado: Any = None
@@ -342,11 +353,27 @@ class Dialogo(ctk.CTkToplevel):
         entrada.configure(show="\u2022")
         return entrada
 
-    def campo_fecha(self, clave: str, etiqueta: str,
-                    valor: Optional[date] = None) -> ctk.CTkEntry:
-        return self.campo_texto(
-            clave, etiqueta, fecha_legible(valor), placeholder="dd/mm/aaaa", ancho=160
-        )
+    def campo_fecha(self, clave: str, etiqueta: str, valor: Optional[date] = None,
+                    *, opcional: bool = True) -> SelectorFecha:
+        """Fecha elegida desde un calendario (``opcional`` permite dejarla vacía)."""
+        self._etiqueta(etiqueta)
+        selector = SelectorFecha(self.form, valor, opcional=opcional)
+        selector.grid(row=self._fila, column=1, sticky="w", padx=10, pady=6)
+        self._fila += 1
+        self._campos[clave] = selector
+        return selector
+
+    def campo_combo(self, clave: str, etiqueta: str, valores: Sequence[str],
+                    valor: str = "") -> ctk.CTkComboBox:
+        """Lista de sugerencias en la que también se puede escribir un valor nuevo."""
+        self._etiqueta(etiqueta)
+        combo = ctk.CTkComboBox(self.form, values=list(valores), width=330,
+                                font=FUENTE_NORMAL)
+        combo.set(valor or "")
+        combo.grid(row=self._fila, column=1, sticky="w", padx=10, pady=6)
+        self._fila += 1
+        self._campos[clave] = combo
+        return combo
 
     def campo_monto(self, clave: str, etiqueta: str, valor: float = 0.0) -> ctk.CTkEntry:
         texto = "" if not valor else f"{valor:.2f}".replace(",", "")
@@ -407,12 +434,17 @@ class Dialogo(ctk.CTkToplevel):
             return widget.get("1.0", "end-1c").strip()
         if isinstance(widget, (ctk.CTkOptionMenu,)):
             return widget.get()
+        if isinstance(widget, SelectorFecha):
+            return widget.get()
         if isinstance(widget, ctk.CTkCheckBox):
             return "1" if widget.get() else "0"
         return widget.get().strip()
 
     def fecha(self, clave: str) -> Optional[date]:
         return parsear_fecha(self.texto(clave))
+
+    def poner_fecha(self, clave: str, valor: Optional[date]) -> None:
+        self._campos[clave].set(valor)
 
     def monto(self, clave: str) -> float:
         return parsear_monto(self.texto(clave))
@@ -441,10 +473,14 @@ class Dialogo(ctk.CTkToplevel):
         etiquetador: Callable[[Any], str] = str,
         seleccion: Any = None,
         vacio: str = "— Ninguno —",
+        opcional: bool = False,
     ) -> ctk.CTkOptionMenu:
-        """Selector cuyo valor visible es una etiqueta y cuyo objeto se recupera con :meth:`objeto`."""
+        """Selector cuyo valor visible es una etiqueta y cuyo objeto se recupera con :meth:`objeto`.
+
+        Con ``opcional`` la primera opción es ``vacio`` y devuelve ``None``.
+        """
         mapa: dict[str, Any] = {}
-        valores: list[str] = []
+        valores: list[str] = [vacio] if opcional and objetos else []
         for objeto in objetos:
             base = etiquetador(objeto)
             texto, n = base, 2

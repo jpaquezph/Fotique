@@ -51,7 +51,7 @@ def cargar_datos_demo(repos) -> dict[str, int]:
         Fotografo(nombre="Tomás", apellido="Benítez", telefono="+54 9 341 555 0103",
                   email="tomas@fotia.example"),
         Fotografo(nombre="Lucía", apellido="Ferreyra", telefono="+54 9 341 555 0104",
-                  email="lucia@fotia.example", activo=False),
+                  email="lucia@fotia.example"),
     ]
     for fotografo in fotografos:
         repos.fotografos.crear(fotografo)
@@ -109,27 +109,27 @@ def cargar_datos_demo(repos) -> dict[str, int]:
         repos.clientes.crear(cliente)
 
     proyectos = [
-        Proyecto(cliente="", titulo="Casamiento López & Paz", cobro_total=1_500_000,
+        Proyecto(cliente="", titulo="Casamiento López & Paz", tipo="Boda", cobro_total=1_500_000,
                  sena=500_000, cliente_id=clientes[0].id, fotografo_id=jorge.id,
                  fecha_evento=_en(45), estado=EstadoProyecto.CONFIRMADO,
                  sena_fecha=_en(-30), sena_medio="Transferencia",
                  direccion="Estancia La Candelaria, Funes"),
-        Proyecto(cliente="", titulo="Book corporativo Vértice", cobro_total=420_000,
+        Proyecto(cliente="", titulo="Book corporativo Vértice", tipo="Empresarial", cobro_total=420_000,
                  sena=140_000, cliente_id=clientes[1].id, fotografo_id=tomas.id,
                  fecha_evento=_en(12), estado=EstadoProyecto.EN_CURSO,
                  sena_fecha=_en(-10), sena_medio="Efectivo"),
-        Proyecto(cliente="", titulo="15 años Emilia Rivas", cobro_total=680_000,
+        Proyecto(cliente="", titulo="15 años Emilia Rivas", tipo="15 años", cobro_total=680_000,
                  sena=200_000, cliente_id=clientes[2].id, fotografo_id=marina.id,
                  fecha_evento=_en(70), estado=EstadoProyecto.CONFIRMADO,
                  sena_fecha=_en(-5), sena_medio="Mercado Pago"),
-        Proyecto(cliente="", titulo="Casamiento Vera (ceremonia)", cobro_total=2_100_000,
+        Proyecto(cliente="", titulo="Casamiento Vera (ceremonia)", tipo="Boda", cobro_total=2_100_000,
                  sena=700_000, cliente_id=clientes[3].id, fotografo_id=marina.id,
                  fecha_evento=_en(-25), estado=EstadoProyecto.CERRADO,
                  sena_fecha=_en(-120), sena_medio="Transferencia"),
-        Proyecto(cliente="", titulo="Catálogo Nórdica invierno", cobro_total=560_000,
+        Proyecto(cliente="", titulo="Catálogo Nórdica invierno", tipo="Empresarial", cobro_total=560_000,
                  sena=0, cliente_id=clientes[4].id, fotografo_id=tomas.id,
                  fecha_evento=_en(20), estado=EstadoProyecto.PRESUPUESTO),
-        Proyecto(cliente="", titulo="Product shots Nórdica", cobro_total=310_000,
+        Proyecto(cliente="", titulo="Product shots Nórdica", tipo="Gastronómica", cobro_total=310_000,
                  sena=100_000, cliente_id=clientes[4].id, fotografo_id=jorge.id,
                  fecha_evento=_en(-60), estado=EstadoProyecto.CERRADO,
                  sena_fecha=_en(-90), sena_medio="Transferencia"),
@@ -147,31 +147,31 @@ def cargar_datos_demo(repos) -> dict[str, int]:
     repos.proyectos.crear_pago(proyectos[5].id, 150_000, _en(-55), "Efectivo")
     repos.proyectos.crear_pago(proyectos[5].id, 60_000, _en(-30), "Efectivo")
 
-    # -- Trabajos y entregas (RF-04) --------------------------------------- #
+    # -- Trabajos y entregas --------------------------------------- #
     trabajos = [
-        TrabajoPendiente(titulo="Edición selección casamiento", descripcion="120 fotos",
+        TrabajoPendiente(titulo="Edición selección casamiento", rol="Fotógrafo", descripcion="120 fotos",
                          fotografo_id=jorge.id, proyecto_id=proyectos[0].id,
                          fecha_entrega=_en(60), estado=EstadoTrabajo.EN_EDICION),
-        TrabajoPendiente(titulo="Entrega galería online", descripcion="Link privado",
+        TrabajoPendiente(titulo="Entrega galería online", rol="Fotógrafo", descripcion="Link privado",
                          fotografo_id=jorge.id, proyecto_id=proyectos[0].id,
                          fecha_entrega=_en(65), estado=EstadoTrabajo.PENDIENTE),
-        TrabajoPendiente(titulo="Retoque retratos equipo", descripcion="30 fotos",
+        TrabajoPendiente(titulo="Retoque retratos equipo", rol="Fotógrafo", descripcion="30 fotos",
                          fotografo_id=tomas.id, proyecto_id=proyectos[1].id,
                          fecha_entrega=_en(4), estado=EstadoTrabajo.EN_EDICION),
-        TrabajoPendiente(titulo="Prueba de luz locación",
+        TrabajoPendiente(titulo="Prueba de luz locación", rol="Iluminador",
                          fotografo_id=marina.id, proyecto_id=proyectos[2].id,
                          fecha_entrega=_en(21), estado=EstadoTrabajo.PENDIENTE),
-        TrabajoPendiente(titulo="Álbum impreso Vera", descripcion="Fotolibro 30x30",
+        TrabajoPendiente(titulo="Álbum impreso Vera", rol="Segunda cámara", descripcion="Fotolibro 30x30",
                          fotografo_id=marina.id, proyecto_id=proyectos[3].id,
                          fecha_entrega=_en(-8), estado=EstadoTrabajo.ENTREGADO),
-        TrabajoPendiente(titulo="Selección producto Nórdica", descripcion="40 fotos",
+        TrabajoPendiente(titulo="Selección producto Nórdica", rol="Asistente", descripcion="40 fotos",
                          fotografo_id=jorge.id, proyecto_id=proyectos[5].id,
                          fecha_entrega=_en(-40), estado=EstadoTrabajo.ENTREGADO),
     ]
     for trabajo in trabajos:
         repos.trabajos.crear(trabajo)
 
-    # -- Módulo D: tarifario (RF-07) --------------------------------------- #
+    # -- Módulo D: tarifario --------------------------------------- #
     servicios = [
         Servicio(nombre="Cobertura boda (8 hs)", categoria="Coberturas",
                  precio=650_000, unidad="evento"),
@@ -197,7 +197,7 @@ def cargar_datos_demo(repos) -> dict[str, int]:
     for servicio in servicios:
         repos.servicios.crear(servicio)
 
-    # -- Contratos (RF-06) ------------------------------------------------- #
+    # -- Contratos ------------------------------------------------- #
     plantilla = repos.plantillas.crear(
         PlantillaContrato(
             nombre="Contrato estándar de servicios",
@@ -225,7 +225,7 @@ def cargar_datos_demo(repos) -> dict[str, int]:
         )
     )
 
-    # -- Agenda (RF-08) ---------------------------------------------------- #
+    # -- Agenda ---------------------------------------------------- #
     eventos = [
         Evento(titulo="Previa sesión de fotos López", fecha=_en(10), hora="16:00",
                tipo="Sesión", fotografo_id=jorge.id, proyecto_id=proyectos[0].id),

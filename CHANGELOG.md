@@ -3,6 +3,57 @@
 Todo lo notable de Fotia se documenta acá.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 
+## [1.2.0] — 2026-10-04
+
+### Agregado
+
+- **Resumen general** (sólo administradores): ingresos, egresos y movimientos
+  de dinero; salidas por equipo; eventos y trabajos por fotógrafo; roles
+  cubiertos; movimientos por cliente; proyectos y contratos por estado. Con
+  filtro de período, secciones y gráficos de torta. Incluye el registro de
+  **egresos**.
+- **Calendario para elegir fechas** en todos los formularios, con navegación
+  por año y mes para llegar rápido a fechas antiguas. Ya no se tipean.
+- Asignación de equipos con **proyecto**, **fecha de retiro** y **fecha de
+  entrega**; el historial de movimientos muestra esos datos.
+- **Rol por trabajo** (Fotógrafo, Segunda cámara, Tercera cámara, Iluminador,
+  Asistente o uno nuevo), independiente del perfil de la persona.
+- **Tipo de proyecto** con categorías propias (Boda, 15 años, Empresarial,
+  Gastronómica o las que se escriban).
+- Al dar de alta un fotógrafo, el administrador elige su **rol en el sistema**
+  y se crea su cuenta de acceso con contraseña provisoria.
+- **Historial de entregas** por fotógrafo: activas, cerradas y canceladas, con
+  acciones para marcar entregada, cancelar o reabrir.
+
+### Cambiado
+
+- El número de serie de un equipo es opcional.
+- Lo abonado (seña + pagos) no puede superar el cobro total del proyecto.
+- Eliminar equipos queda reservado a los administradores.
+- «Ficha» de un equipo pasa a ser su historial de movimientos.
+- Fotógrafos y servicios del tarifario ya no tienen estado activo/inactivo.
+- El rol «Operador» pasa a llamarse «Usuario».
+- Panel de control con tarjetas de colores, tipografía en negrita y saldo a
+  cobrar en verde.
+- La ventana y los diálogos se ajustan al tamaño real de la pantalla y las
+  tablas se adaptan al alto disponible, sin cortar la parte inferior.
+- Se quitaron de la interfaz y del código las referencias a los códigos de
+  requisitos (RF / RNF).
+
+### Quitado
+
+- «Ver todo el mes» del calendario y «Cargar datos de ejemplo» de respaldos.
+
+### Migración
+
+- Al abrir una base de versiones anteriores se actualiza sola al esquema
+  nuevo; antes se guarda una copia junto a ella (`fotia.db.antes-de-v2`).
+
+### Corregido
+
+- En la 1.1 la ventana podía abrirse más chica que su contenido en pantallas
+  con escalado de Windows.
+
 ## [1.1.0] — 2026-10-04
 
 ### Agregado

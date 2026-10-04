@@ -13,6 +13,7 @@ from .errors import (
 from .models import (
     Cliente,
     Contrato,
+    Egreso,
     Equipo,
     EstadoEquipo,
     EstadoProyecto,
@@ -36,6 +37,7 @@ __all__ = [
     "CredencialesInvalidasError",
     "CuentaBloqueadaError",
     "DatosInvalidosError",
+    "Egreso",
     "EliminacionRestringidaError",
     "Equipo",
     "EquipoNoDisponibleException",

@@ -11,6 +11,7 @@ from ..domain.errors import DatosInvalidosError
 from ..domain.models import (
     Cliente,
     Contrato,
+    Egreso,
     Equipo,
     EstadoEquipo,
     EstadoProyecto,
@@ -53,13 +54,13 @@ class DialogoEquipo(Dialogo):
                          ancho=600, alto=640)
         e = equipo
         self._equipo = e
-        self.campo_texto("serie", "Número de serie *", e.numero_serie if e else "",
-                         "SN000000")
+        self.campo_texto("serie", "Número de serie", e.numero_serie if e else "",
+                         "Opcional")
         self.campo_texto("marca", "Marca *", e.marca if e else "", "Sony")
         self.campo_texto("modelo", "Modelo *", e.modelo if e else "", "A7 IV")
         self.campo_fecha("adquisicion", "Fecha de adquisición",
                          e.fecha_adquisicion if e else None)
-        self.separador("Service (RF-03)")
+        self.separador("Service")
         self.campo_fecha("service_ultimo", "Último service",
                          e.fecha_service_ultimo if e else None)
         self.campo_fecha("service_proximo", "Próximo service",
@@ -78,8 +79,8 @@ class DialogoEquipo(Dialogo):
 
     def _guardar(self) -> Equipo:
         serie, marca, modelo = self.texto("serie"), self.texto("marca"), self.texto("modelo")
-        if not serie or not marca or not modelo:
-            raise DatosInvalidosError("Número de serie, marca y modelo son obligatorios.")
+        if not marca or not modelo:
+            raise DatosInvalidosError("Marca y modelo son obligatorios.")
         equipo = self._equipo or Equipo(numero_serie=serie, marca=marca, modelo=modelo)
         equipo.numero_serie, equipo.marca, equipo.modelo = serie, marca, modelo
         equipo.fecha_adquisicion = self.fecha("adquisicion")
@@ -90,20 +91,26 @@ class DialogoEquipo(Dialogo):
 
 
 class DialogoAsignar(Dialogo):
-    """RF-02: exige seleccionar el fotógrafo responsable."""
+    """Exige el fotógrafo responsable; el proyecto y la entrega son opcionales."""
 
-    def __init__(self, master: Any, equipo: Equipo, fotografos: Sequence[Fotografo]):
-        super().__init__(master, f"Asignar {equipo.descripcion}", ancho=560, alto=340)
+    def __init__(self, master: Any, equipo: Equipo, fotografos: Sequence[Fotografo],
+                 proyectos: Sequence[Proyecto] = ()):
+        super().__init__(master, f"Asignar {equipo.descripcion}", ancho=560, alto=460)
         if not fotografos:
-            self.nota("No hay fotógrafos activos. Cargue uno en el módulo de personal.")
+            self.nota("No hay fotógrafos cargados. Agregue uno en el módulo de personal.")
         self.campo_selector_objetos(
             "fotografo", "Fotógrafo responsable *", fotografos, _etiqueta_fotografo
         )
-        self.campo_fecha("fecha", "Fecha de entrega", date.today())
+        self.campo_selector_objetos(
+            "proyecto", "Proyecto", proyectos, _etiqueta_proyecto,
+            vacio="— Sin proyecto —", opcional=True,
+        )
+        self.campo_fecha("retiro", "Fecha de retiro *", date.today(), opcional=False)
+        self.campo_fecha("entrega", "Fecha de entrega")
         self.campo_texto("obs", "Observaciones", "", "Evento, cliente, sucursal…")
         self.nota(
             "Al confirmar el equipo pasa a 'En uso' y el movimiento queda registrado "
-            "en el historial (RF-02)."
+            "en el historial."
         )
         self.botones("Asignar", self._guardar)
 
@@ -111,9 +118,17 @@ class DialogoAsignar(Dialogo):
         fotografo = self.objeto("fotografo")
         if fotografo is None:
             raise DatosInvalidosError("Debe seleccionar un fotógrafo responsable.")
+        retiro = self.fecha("retiro") or date.today()
+        entrega = self.fecha("entrega")
+        if entrega is not None and entrega < retiro:
+            raise DatosInvalidosError(
+                "La fecha de entrega no puede ser anterior a la de retiro.")
+        proyecto = self.objeto("proyecto")
         return {
             "fotografo_id": fotografo.id,
-            "fecha": self.fecha("fecha") or date.today(),
+            "proyecto_id": proyecto.id if proyecto else None,
+            "fecha": retiro,
+            "fecha_prevista": entrega,
             "observaciones": self.texto("obs"),
         }
 
@@ -123,7 +138,7 @@ class DialogoDevolver(Dialogo):
         super().__init__(master, f"Devolver {equipo.descripcion}", ancho=560, alto=300)
         if equipo.fotografo_actual:
             self.nota(f"En uso de: {equipo.fotografo_actual.nombre_completo}.")
-        self.campo_fecha("fecha", "Fecha de devolución", date.today())
+        self.campo_fecha("fecha", "Fecha de devolución", date.today(), opcional=False)
         self.campo_texto("obs", "Observaciones", "", "Estado del equipo, incidencias…")
         self.botones("Devolver al stock", self._guardar)
 
@@ -149,13 +164,13 @@ class DialogoTabla(Dialogo):
 
 
 class DialogoFichaEquipo(Dialogo):
-    """Ficha completa: datos + historial de uso (RF-01/RF-02)."""
+    """Ficha completa: datos + historial de uso."""
 
     def __init__(self, master: Any, equipo: Equipo, historial: Sequence[dict]):
         super().__init__(master, f"Ficha: {equipo.descripcion}", ancho=820, alto=560)
         self.separador("Datos del equipo")
         for etiqueta, valor in (
-            ("Número de serie", equipo.numero_serie),
+            ("Número de serie", equipo.numero_serie or "—"),
             ("Marca / Modelo", equipo.descripcion),
             ("Estado", str(equipo.estado)),
             ("Fotógrafo responsable",
@@ -177,7 +192,7 @@ class DialogoFichaEquipo(Dialogo):
         ]
         filas = [
             [
-                f"{r['marca']} {r['modelo']} ({r['numero_serie']})",
+                f"{r['marca']} {r['modelo']}",
                 f"{r['f_nombre'] or ''} {r['f_apellido'] or ''}".strip() or "—",
                 fecha_legible(r["fecha_asignacion"]),
                 fecha_legible(r["fecha_devolucion"]) or "En uso",
@@ -201,18 +216,27 @@ class DialogoFichaEquipo(Dialogo):
 
 
 class DialogoFotografo(Dialogo):
-    def __init__(self, master: Any, fotografo: Optional[Fotografo] = None):
+    """``elegir_rol`` agrega el rol de la cuenta de acceso (sólo administradores,
+    sólo en el alta); queda en ``self.rol`` al aceptar."""
+
+    def __init__(self, master: Any, fotografo: Optional[Fotografo] = None, *,
+                 elegir_rol: bool = False):
         super().__init__(master, "Editar fotógrafo" if fotografo else "Nuevo fotógrafo",
                          ancho=580, alto=440)
         f = fotografo
         self._fotografo = f
+        self._elegir_rol = elegir_rol and f is None
+        self.rol: Optional[RolUsuario] = None
         self.campo_texto("nombre", "Nombre *", f.nombre if f else "")
         self.campo_texto("apellido", "Apellido", f.apellido if f else "")
         self.campo_texto("telefono", "Teléfono", f.telefono if f else "",
                          "+54 9 …")
         self.campo_texto("email", "Email", f.email if f else "", "nombre@estudio.com")
-        self.campo_check("activo", "Activo (visible en las agendas)", 
-                         f.activo if f else True)
+        if self._elegir_rol:
+            self.campo_selector("rol", "Rol en el sistema",
+                                [str(RolUsuario.USUARIO), str(RolUsuario.ADMINISTRADOR)])
+            self.nota("Se crea su cuenta de acceso con una contraseña provisoria, "
+                      "que deberá cambiar la primera vez que ingrese.")
         self.botones("Guardar", self._guardar)
 
     def _guardar(self) -> Fotografo:
@@ -224,7 +248,9 @@ class DialogoFotografo(Dialogo):
         f.apellido = self.texto("apellido")
         f.telefono = self.texto("telefono")
         f.email = self.texto("email")
-        f.activo = self.es_verdadero("activo")
+        f.activo = True
+        if self._elegir_rol:
+            self.rol = RolUsuario(self.valor_selector("rol"))
         return f
 
 
@@ -269,6 +295,7 @@ class DialogoProyecto(Dialogo):
         clientes: Sequence[Cliente],
         fotografos: Sequence[Fotografo],
         proyecto: Optional[Proyecto] = None,
+        tipos: Sequence[str] = (),
     ):
         super().__init__(master, "Editar proyecto" if proyecto else "Nuevo proyecto",
                          ancho=640, alto=760)
@@ -283,6 +310,8 @@ class DialogoProyecto(Dialogo):
         )
         self.campo_texto("titulo", "Título del proyecto *", p.titulo if p else "",
                          "Casamiento López & Paz")
+        self.campo_combo("tipo", "Tipo de proyecto", tipos, p.tipo if p else "")
+        self.nota("Elija un tipo de la lista o escriba uno nuevo según su rubro.")
         self.campo_selector_objetos(
             "fotografo", "Fotógrafo responsable", fotografos, _etiqueta_fotografo,
             seleccion=(p.fotografo if p else None),
@@ -293,7 +322,7 @@ class DialogoProyecto(Dialogo):
             str(p.estado) if p else str(EstadoProyecto.PRESUPUESTO),
         )
         self.campo_texto("direccion", "Dirección / locación", p.direccion if p else "")
-        self.separador("Cobro (RF-05)")
+        self.separador("Cobro")
         self.campo_monto("cobro", "Cobro total", p.cobro_total if p else 0.0)
         self.campo_monto("sena", "Seña", p.sena if p else 0.0)
         self.campo_fecha("sena_fecha", "Fecha de la seña", p.sena_fecha if p else None)
@@ -318,6 +347,7 @@ class DialogoProyecto(Dialogo):
         proyecto.cliente = cliente.nombre
         proyecto.cliente_id = cliente.id
         proyecto.titulo = self.texto("titulo")
+        proyecto.tipo = self.texto("tipo")
         proyecto.fotografo = fotografo
         proyecto.fotografo_id = fotografo.id if fotografo else None
         proyecto.fecha_evento = self.fecha("evento")
@@ -343,8 +373,9 @@ class DialogoPago(Dialogo):
                 f"{proyecto.nombre} — total {moneda(proyecto.cobro_total)} · "
                 f"señado {moneda(proyecto.sena)} · saldo {moneda(proyecto.saldo)}"
             )
+        self._proyecto = proyecto
         self.campo_monto("monto", "Monto *")
-        self.campo_fecha("fecha", "Fecha", date.today())
+        self.campo_fecha("fecha", "Fecha", date.today(), opcional=False)
         self.campo_selector(
             "medio", "Medio de pago",
             ["Efectivo", "Transferencia", "Mercado Pago", "Tarjeta", "Otro"],
@@ -357,6 +388,8 @@ class DialogoPago(Dialogo):
         monto = self.monto("monto")
         if monto <= 0:
             raise DatosInvalidosError("El monto debe ser mayor a cero.")
+        if self._proyecto is not None:
+            self._proyecto.validar_pago(monto)
         return {
             "monto": monto,
             "fecha": self.fecha("fecha") or date.today(),
@@ -374,9 +407,10 @@ class DialogoTrabajo(Dialogo):
     def __init__(self, master: Any, fotografos: Sequence[Fotografo],
                  proyectos: Sequence[Proyecto],
                  trabajo: Optional[TrabajoPendiente] = None,
-                 fotografo_inicial: Optional[Fotografo] = None):
+                 fotografo_inicial: Optional[Fotografo] = None,
+                 roles: Sequence[str] = ()):
         super().__init__(master, "Editar trabajo" if trabajo else "Nuevo trabajo",
-                         ancho=620, alto=560)
+                         ancho=620, alto=600)
         t = trabajo
         self._trabajo = t
         fotografo_actual = fotografo_inicial
@@ -395,9 +429,11 @@ class DialogoTrabajo(Dialogo):
             "fotografo", "Fotógrafo *", fotografos, _etiqueta_fotografo,
             seleccion=fotografo_actual,
         )
+        self.campo_combo("rol", "Rol en este trabajo", roles, t.rol if t else "")
+        self.nota("El rol es propio de cada trabajo: elija uno o escriba uno nuevo.")
         self.campo_selector_objetos(
             "proyecto", "Proyecto asociado", proyectos, _etiqueta_proyecto,
-            seleccion=proyecto_actual,
+            seleccion=proyecto_actual, vacio="— Sin proyecto —", opcional=True,
         )
         self.campo_fecha("entrega", "Fecha de entrega", t.fecha_entrega if t else None)
         self.campo_selector("estado", "Estado", [str(e) for e in EstadoTrabajo],
@@ -416,6 +452,7 @@ class DialogoTrabajo(Dialogo):
         proyecto = self.objeto("proyecto")
         trabajo = self._trabajo or TrabajoPendiente(titulo=titulo)
         trabajo.titulo = titulo
+        trabajo.rol = self.texto("rol")
         trabajo.fotografo = fotografo
         trabajo.fotografo_id = fotografo.id
         trabajo.proyecto = proyecto
@@ -435,7 +472,7 @@ class DialogoEvento(Dialogo):
         e = evento
         self._evento = e
         self.campo_texto("titulo", "Título *", e.titulo if e else "", "Previa sesión")
-        self.campo_fecha("fecha", "Fecha *", e.fecha if e else fecha)
+        self.campo_fecha("fecha", "Fecha *", e.fecha if e else fecha, opcional=False)
         self.campo_texto("hora", "Hora", e.hora if e else "", "16:00")
         self.campo_selector(
             "tipo", "Tipo",
@@ -490,8 +527,6 @@ class DialogoServicio(Dialogo):
         self.campo_monto("precio", "Precio", s.precio if s else 0.0)
         self.campo_texto("unidad", "Unidad", s.unidad if s else "servicio",
                          "servicio, evento, foto, jornada…")
-        self.campo_check("activo", "Activo en el tarifario",
-                         s.activo if s else True)
         self.campo_area("notas", "Notas", s.notas if s else "", altura=90)
         if categorias:
             self.nota("Categorías existentes: " + ", ".join(categorias))
@@ -509,7 +544,7 @@ class DialogoServicio(Dialogo):
         servicio.categoria = self.texto("categoria") or "Otros"
         servicio.precio = precio
         servicio.unidad = self.texto("unidad") or "servicio"
-        servicio.activo = self.es_verdadero("activo")
+        servicio.activo = True
         servicio.notas = self.texto("notas")
         return servicio
 
@@ -613,7 +648,7 @@ def DialogoMensaje_error(master: Any, titulo: str, mensaje: str) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Ficha del fotógrafo (RF-04)
+# Ficha del fotógrafo
 # --------------------------------------------------------------------------- #
 
 
@@ -627,7 +662,6 @@ class DialogoFichaFotografo(Dialogo):
             ("Nombre", fotografo.nombre_completo),
             ("Teléfono", fotografo.telefono or "—"),
             ("Email", fotografo.email or "—"),
-            ("Estado", "Activo" if fotografo.activo else "Inactivo"),
         ):
             self.campo_texto(etiqueta, etiqueta, valor)
             self._campos[etiqueta].configure(state="disabled")
@@ -640,7 +674,7 @@ class DialogoFichaFotografo(Dialogo):
             {"clave": "notas", "titulo": "Notas", "ancho": 300},
         ]
         filas_equipos = [
-            [e.numero_serie, e.descripcion,
+            [e.numero_serie or "—", e.descripcion,
              fecha_legible(e.fecha_service_proximo) or "—", e.notas or ""]
             for e in equipos
         ]
@@ -654,22 +688,23 @@ class DialogoFichaFotografo(Dialogo):
 
         self.separador(f"Entregas y trabajos ({len(trabajos)})")
         columnas_trabajos = [
-            {"clave": "titulo", "titulo": "Trabajo", "ancho": 240},
-            {"clave": "proyecto", "titulo": "Proyecto", "ancho": 180},
-            {"clave": "entrega", "titulo": "Entrega", "ancho": 110, "anchor": "center"},
-            {"clave": "estado", "titulo": "Estado", "ancho": 110, "anchor": "center"},
-            {"clave": "desc", "titulo": "Descripción", "ancho": 220},
+            {"clave": "titulo", "titulo": "Trabajo", "ancho": 220},
+            {"clave": "rol", "titulo": "Rol", "ancho": 130},
+            {"clave": "proyecto", "titulo": "Proyecto", "ancho": 170},
+            {"clave": "entrega", "titulo": "Entrega", "ancho": 100, "anchor": "center"},
+            {"clave": "estado", "titulo": "Estado", "ancho": 100, "anchor": "center"},
+            {"clave": "desc", "titulo": "Descripción", "ancho": 160},
         ]
         filas_trabajos = [
             [t.titulo,
+             t.rol or "—",
              (t.proyecto.titulo if t.proyecto else "—") or "—",
              fecha_legible(t.fecha_entrega) or "—",
              str(t.estado),
              t.descripcion or ""]
             for t in trabajos
         ]
-        etiquetas = ["entregado" if str(t.estado) == "Entregado" else "pendiente"
-                     for t in trabajos]
+        etiquetas = [_tag_trabajo(t) for t in trabajos]
         tabla_trabajos = Tabla(self.form, columnas_trabajos,
                                altura=max(4, len(trabajos) + 1))
         tabla_trabajos.grid(row=self._fila, column=0, columnspan=2, sticky="ew",
@@ -683,7 +718,7 @@ class DialogoFichaFotografo(Dialogo):
 
 
 class DialogoDetalleProyecto(Dialogo):
-    """RF-05: ficha del proyecto con el desglose de seña, pagos y saldo."""
+    """Ficha del proyecto con el desglose de seña, pagos y saldo."""
 
     def __init__(self, master: Any, proyecto: Proyecto):
         super().__init__(master, f"Proyecto: {proyecto.nombre}",
@@ -696,6 +731,7 @@ class DialogoDetalleProyecto(Dialogo):
 
         self.separador("Datos del proyecto")
         solo("Título", p.titulo or "—")
+        solo("Tipo", p.tipo or "—")
         solo("Cliente", p.cliente or "—")
         solo("Fecha del evento", fecha_legible(p.fecha_evento) or "—")
         solo("Estado", str(p.estado))
@@ -766,7 +802,7 @@ class DialogoUsuario(Dialogo):
         self.campo_texto("nombre", "Nombre y apellido", u.nombre if u else "")
         self.campo_texto("email", "Email", u.email if u else "")
         self.campo_selector("rol", "Rol", [str(r) for r in RolUsuario],
-                            str(u.rol) if u else str(RolUsuario.OPERADOR))
+                            str(u.rol) if u else str(RolUsuario.USUARIO))
         if u is None:
             self.campo_password("password", "Contraseña *")
             self.campo_password("repetir", "Repetir contraseña *")
@@ -789,7 +825,7 @@ class DialogoUsuario(Dialogo):
                        rol=RolUsuario(self.valor_selector("rol")),
                        activo=self.es_verdadero("activo"), id=u.id,
                        debe_cambiar_password=u.debe_cambiar_password,
-                       ultimo_acceso=u.ultimo_acceso)
+                       ultimo_acceso=u.ultimo_acceso, fotografo_id=u.fotografo_id)
 
 
 class DialogoCambiarPassword(Dialogo):
@@ -864,3 +900,121 @@ class DialogoMiCuenta(Dialogo):
         boton_secundario(acciones, "Nuevo código de recuperación…",
                          lambda: al_regenerar_codigo(self), ancho=240).pack(side="left")
         self.botones("Guardar", lambda: (self.texto("nombre"), self.texto("email")))
+
+
+
+# --------------------------------------------------------------------------- #
+# Historial de entregas y egresos
+# --------------------------------------------------------------------------- #
+
+
+def _tag_trabajo(trabajo: TrabajoPendiente) -> str:
+    if trabajo.estado == EstadoTrabajo.CANCELADO:
+        return "vencido"
+    return "pendiente" if trabajo.estado.esta_abierto else "entregado"
+
+
+class DialogoHistorialEntregas(Dialogo):
+    """Entregas de un fotógrafo (o de todos) filtradas por situación.
+
+    ``cargar()`` devuelve los trabajos actuales; ``al_cambiar(trabajo, estado)``
+    persiste el nuevo estado.
+    """
+
+    FILTROS = {
+        "Todas": lambda t: True,
+        "Activas": lambda t: t.estado.esta_abierto,
+        "Cerradas": lambda t: t.estado == EstadoTrabajo.ENTREGADO,
+        "Canceladas": lambda t: t.estado == EstadoTrabajo.CANCELADO,
+    }
+
+    def __init__(self, master: Any, titulo: str, cargar, al_cambiar):
+        super().__init__(master, titulo, ancho=980, alto=560)
+        self._cargar = cargar
+        self._al_cambiar = al_cambiar
+        self._filtro = ctk.StringVar(value="Todas")
+        barra = ctk.CTkFrame(self.form, fg_color="transparent")
+        barra.grid(row=self._fila, column=0, columnspan=2, sticky="ew", padx=10, pady=(4, 0))
+        self._fila += 1
+        ctk.CTkSegmentedButton(barra, values=list(self.FILTROS), variable=self._filtro,
+                               command=lambda _v: self._refrescar()).pack(side="left")
+        boton(barra, "Cancelar entrega",
+              lambda: self._cambiar(EstadoTrabajo.CANCELADO), color="peligro",
+              ancho=140).pack(side="right")
+        boton(barra, "Marcar entregada",
+              lambda: self._cambiar(EstadoTrabajo.ENTREGADO), color="exito",
+              ancho=140).pack(side="right", padx=6)
+        boton_secundario(barra, "Reabrir",
+                         lambda: self._cambiar(EstadoTrabajo.PENDIENTE),
+                         ancho=90).pack(side="right")
+        self.tabla = Tabla(self.form, [
+            {"clave": "titulo", "titulo": "Trabajo", "ancho": 210},
+            {"clave": "fotografo", "titulo": "Fotógrafo", "ancho": 140},
+            {"clave": "rol", "titulo": "Rol", "ancho": 120},
+            {"clave": "proyecto", "titulo": "Proyecto", "ancho": 170},
+            {"clave": "entrega", "titulo": "Entrega", "ancho": 95, "anchor": "center"},
+            {"clave": "estado", "titulo": "Estado", "ancho": 95, "anchor": "center"},
+        ], altura=11)
+        self.tabla.grid(row=self._fila, column=0, columnspan=2, sticky="nsew",
+                        padx=10, pady=10)
+        self._fila += 1
+        self._resumen = ctk.CTkLabel(self.form, text="", font=FUENTE_NORMAL,
+                                     text_color=GRIS_TEXTO, anchor="w")
+        self._resumen.grid(row=self._fila, column=0, columnspan=2, sticky="w", padx=10)
+        self._fila += 1
+        boton(self._pie, "Cerrar", self.cancelar, ancho=120).pack(side="right")
+        self._refrescar()
+
+    def _refrescar(self) -> None:
+        trabajos = list(self._cargar())
+        visibles = [t for t in trabajos if self.FILTROS[self._filtro.get()](t)]
+        self.tabla.actualizar(
+            [[t.titulo,
+              t.fotografo.nombre_completo if t.fotografo else "—",
+              t.rol or "—",
+              (t.proyecto.titulo if t.proyecto else "") or "—",
+              fecha_legible(t.fecha_entrega) or "—",
+              str(t.estado)] for t in visibles],
+            visibles, [_tag_trabajo(t) for t in visibles])
+        cuenta = {n: sum(1 for t in trabajos if f(t)) for n, f in self.FILTROS.items()}
+        self._resumen.configure(
+            text=f"{cuenta['Todas']} en total · {cuenta['Activas']} activas · "
+            f"{cuenta['Cerradas']} cerradas · {cuenta['Canceladas']} canceladas")
+
+    def _cambiar(self, estado: EstadoTrabajo) -> None:
+        trabajo = self.tabla.seleccionado()
+        if trabajo is None:
+            DialogoMensaje.error(self, "Sin selección", "Elija una entrega de la tabla.")
+            return
+        self._al_cambiar(trabajo, estado)
+        self._refrescar()
+
+
+class DialogoEgreso(Dialogo):
+    def __init__(self, master: Any, categorias: Sequence[str],
+                 proyectos: Sequence[Proyecto] = ()):
+        super().__init__(master, "Registrar egreso", ancho=580, alto=470)
+        self.campo_texto("concepto", "Concepto *", "", "Alquiler de luces, viáticos…")
+        self.campo_monto("monto", "Monto *")
+        self.campo_fecha("fecha", "Fecha", date.today(), opcional=False)
+        self.campo_combo("categoria", "Categoría", categorias,
+                         categorias[0] if categorias else "Otros")
+        self.campo_selector_objetos(
+            "proyecto", "Proyecto", proyectos, _etiqueta_proyecto,
+            vacio="— Gasto general —", opcional=True,
+        )
+        self.campo_texto("notas", "Notas")
+        self.botones("Registrar", self._guardar)
+
+    def _guardar(self) -> Egreso:
+        proyecto = self.objeto("proyecto")
+        egreso = Egreso(
+            concepto=self.texto("concepto"),
+            monto=self.monto("monto"),
+            fecha=self.fecha("fecha") or date.today(),
+            categoria=self.texto("categoria") or "Otros",
+            proyecto_id=proyecto.id if proyecto else None,
+            notas=self.texto("notas"),
+        )
+        egreso.validar()
+        return egreso

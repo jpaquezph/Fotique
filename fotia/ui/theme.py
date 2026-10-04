@@ -8,6 +8,7 @@ se estilizan con :func:`aplicar_estilo_tabla` usando :func:`elegir`.
 
 from __future__ import annotations
 
+import sys
 import tkinter
 from tkinter import ttk
 from typing import Optional
@@ -36,6 +37,8 @@ ACENTO: Color = ("#1f6fb5", "#6aaee6")
 VERDE: Color = ("#1e7f3a", "#5fbf7a")
 ROJO: Color = ("#c4323b", "#ef7a80")
 NARANJA: Color = ("#b85f14", "#e0a060")
+VIOLETA: Color = ("#7446b5", "#b396e0")
+TURQUESA: Color = ("#17807f", "#5fc4c2")
 
 # -- botones: (relleno, hover). En oscuro son tonos apagados, no saturados ---- #
 TEXTO_BOTON: Color = ("#ffffff", "#e6ebf0")
@@ -87,6 +90,9 @@ def _cargar_tema() -> None:
                                "unselected_hover_color": NEUTRO_HOVER,
                                "text_color": TEXTO,
                                "text_color_disabled": TEXTO_TENUE},
+        "CTkComboBox": {"fg_color": FONDO, "border_color": BORDE, "border_width": 1,
+                        "button_color": NEUTRO_HOVER, "button_hover_color": BORDE,
+                        "text_color": TEXTO, "text_color_disabled": TEXTO_TENUE},
         "CTkScrollbar": {"button_color": BORDE, "button_hover_color": TEXTO_TENUE},
         "CTkScrollableFrame": {"label_fg_color": RESALTE},
         "DropdownMenu": {"fg_color": FONDO, "hover_color": NEUTRO_HOVER,
@@ -102,6 +108,22 @@ def _cargar_tema() -> None:
 def configurar_apariencia(modo: str = "Sistema") -> None:
     _cargar_tema()
     ctk.set_appearance_mode(TEMAS.get(modo, "system"))
+
+
+def area_de_trabajo(widget: tkinter.Misc) -> tuple[int, int, int, int]:
+    """``(x, y, ancho, alto)`` del escritorio sin la barra de tareas, en píxeles.
+
+    ``winfo_screenwidth`` no sirve en Windows con escalado: Tk lo lee antes de
+    que el proceso sea *DPI aware* y devuelve un tamaño menor al real.
+    """
+    if sys.platform == "win32":
+        import ctypes
+        from ctypes import wintypes
+
+        rect = wintypes.RECT()
+        if ctypes.windll.user32.SystemParametersInfoW(0x0030, 0, ctypes.byref(rect), 0):
+            return rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top
+    return 0, 0, widget.winfo_screenwidth(), widget.winfo_screenheight()
 
 
 def modo_oscuro() -> bool:

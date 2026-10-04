@@ -43,7 +43,7 @@ __all__ = [
 def asignar_equipo(
     equipo: Equipo, fotografo: Optional[Fotografo], fecha: Optional[date] = None
 ) -> date:
-    """RF-02: asigna un equipo ``En stock`` a un fotógrafo responsable."""
+    """Asigna un equipo ``En stock`` a un fotógrafo responsable."""
     equipo.asignar_a_fotografo(fotografo)
     return fecha or date.today()
 
@@ -51,7 +51,7 @@ def asignar_equipo(
 def equipos_en_alerta(
     equipos: Iterable[Equipo], hoy: Optional[date] = None, dias_aviso: int = 30
 ) -> list[tuple[Equipo, EstadoService]]:
-    """RF-03: equipos con service vencido o próximo."""
+    """Equipos con service vencido o próximo."""
     hoy = hoy or date.today()
     alertas = []
     for equipo in equipos:
@@ -71,7 +71,7 @@ def equipos_en_uso_de(fotografo: Fotografo) -> list[Equipo]:
 
 
 def validar_eliminacion_fotografo(fotografo: Fotografo) -> None:
-    """RNF-04: no se elimina un fotógrafo con entregas activas ni con equipos."""
+    """No se elimina un fotógrafo con entregas activas ni con equipos."""
     if fotografo.entregas_activas:
         raise EliminacionRestringidaError(
             f"{fotografo.nombre_completo} tiene "
@@ -96,7 +96,7 @@ def entregas_por_estado(
 
 
 def saldo_proyecto(proyecto: Proyecto) -> float:
-    """RF-05: cobro total - seña - pagos parciales."""
+    """Cobro total - seña - pagos parciales."""
     return proyecto.obtener_saldo_pendiente()
 
 
@@ -121,7 +121,7 @@ def validar_proyecto(proyecto: Proyecto) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Contratos (RF-06)
+# Contratos
 # --------------------------------------------------------------------------- #
 
 PLANTILLA_CONTRATO_BASE = """CONTRATO DE PRESTACIÓN DE SERVICIOS FOTOGRÁFICOS
@@ -153,7 +153,7 @@ def _d(valor: object, vacio: str = "—") -> str:
 def generar_texto_contrato(
     plantilla: str, proyecto: Proyecto, estudio: str = "Estudio Fotia", extra: str = ""
 ) -> str:
-    """RF-06: completa una plantilla con los datos del proyecto."""
+    """Completa una plantilla con los datos del proyecto."""
     from ..util import moneda as _moneda  # import diferido: evita ciclos
 
     datos = {

@@ -29,6 +29,19 @@ class EstadoTrabajo(StrEnum):
     PENDIENTE = "Pendiente"
     EN_EDICION = "En edición"
     ENTREGADO = "Entregado"
+    CANCELADO = "Cancelado"
+
+    @property
+    def esta_abierto(self) -> bool:
+        return self in (EstadoTrabajo.PENDIENTE, EstadoTrabajo.EN_EDICION)
+
+
+# Puntos de partida; el usuario agrega los suyos al escribirlos en el formulario.
+ROLES_TRABAJO = ["Fotógrafo", "Segunda cámara", "Tercera cámara", "Iluminador",
+                 "Asistente"]
+TIPOS_PROYECTO = ["Boda", "15 años", "Empresarial", "Gastronómica"]
+CATEGORIAS_EGRESO = ["Personal", "Equipamiento", "Viáticos", "Impresión",
+                     "Alquileres", "Impuestos", "Otros"]
 
 
 class EstadoProyecto(StrEnum):
@@ -65,8 +78,8 @@ class Fotografo:
 
     @property
     def entregas_activas(self) -> list["TrabajoPendiente"]:
-        """Trabajos que todavía no fueron entregados (RF-04)."""
-        return [t for t in self.trabajos if t.estado != EstadoTrabajo.ENTREGADO]
+        """Trabajos que todavía no fueron entregados."""
+        return [t for t in self.trabajos if t.estado.esta_abierto]
 
     def validar(self) -> None:
         if not self.nombre or not self.nombre.strip():
@@ -75,9 +88,9 @@ class Fotografo:
 
 @dataclass
 class Equipo:
-    numero_serie: str
-    marca: str
-    modelo: str
+    numero_serie: str = ""
+    marca: str = ""
+    modelo: str = ""
     estado: EstadoEquipo = EstadoEquipo.EN_STOCK
     id: Optional[int] = None
     fecha_adquisicion: Optional[date] = None
@@ -88,22 +101,28 @@ class Equipo:
 
     def __post_init__(self) -> None:
         self.estado = EstadoEquipo(self.estado)
-        if not self.numero_serie or not self.numero_serie.strip():
-            raise DatosInvalidosError("El número de serie es obligatorio.")
+        self.numero_serie = (self.numero_serie or "").strip()
         if self.estado == EstadoEquipo.EN_USO and self.fotografo_actual is None:
             raise AsignacionInvalidaError(
-                "Un equipo en uso debe tener un fotógrafo responsable (RF-01)."
+                "Un equipo en uso debe tener un fotógrafo responsable."
             )
 
     @property
     def descripcion(self) -> str:
         return f"{self.marca} {self.modelo}".strip()
 
+    @property
+    def nombre(self) -> str:
+        """Marca y modelo, con el número de serie cuando lo tiene."""
+        if self.numero_serie:
+            return f"{self.descripcion} ({self.numero_serie})"
+        return self.descripcion
+
     def __str__(self) -> str:  # pragma: no cover - trivial
-        return f"{self.descripcion} ({self.numero_serie})"
+        return self.nombre
 
     def asignar_a_fotografo(self, fotografo: Optional[Fotografo]) -> None:
-        """Pasa el equipo a ``En uso`` registrando al responsable (RF-02)."""
+        """Pasa el equipo a ``En uso`` registrando al responsable."""
         if fotografo is None:
             raise AsignacionInvalidaError(
                 "Debe seleccionar el fotógrafo responsable del equipo."
@@ -132,7 +151,7 @@ class Equipo:
     def estado_service(
         self, hoy: Optional[date] = None, dias_aviso: int = 30
     ) -> EstadoService:
-        """RF-03: clasifica la próxima fecha de service."""
+        """Clasifica la próxima fecha de service."""
         if self.fecha_service_proximo is None:
             return EstadoService.SIN_FECHA
         hoy = hoy or date.today()
@@ -188,6 +207,7 @@ class Proyecto:
     direccion: str = ""
     notas: str = ""
     pagos: list[Pago] = field(default_factory=list)
+    tipo: str = ""
 
     def __post_init__(self) -> None:
         self.estado = EstadoProyecto(self.estado)
@@ -207,12 +227,23 @@ class Proyecto:
         return round(self.sena + self.total_pagos_parciales, 2)
 
     def obtener_saldo_pendiente(self) -> float:
-        """RF-05: Cobro Total - Seña - Pagos parciales."""
+        """Cobro Total - Seña - Pagos parciales."""
         return round(self.cobro_total - self.total_pagado, 2)
 
     @property
     def saldo(self) -> float:
         return self.obtener_saldo_pendiente()
+
+    def validar_pago(self, monto: float) -> None:
+        """Lo abonado (seña + pagos) nunca supera el cobro total."""
+        if monto <= 0:
+            raise DatosInvalidosError("El monto del pago debe ser mayor a cero.")
+        saldo = self.obtener_saldo_pendiente()
+        if round(monto - saldo, 2) > 0:
+            raise DatosInvalidosError(
+                "El pago supera el cobro total del proyecto. "
+                f"Saldo disponible para cobrar: {max(saldo, 0):,.2f}."
+            )
 
     def validar(self) -> None:
         # En la base el nombre del cliente se resuelve por JOIN: basta el vínculo.
@@ -235,13 +266,14 @@ class TrabajoPendiente:
     id: Optional[int] = None
     fotografo: Optional[Fotografo] = None
     proyecto: Optional[Proyecto] = None
+    rol: str = ""
 
     def __post_init__(self) -> None:
         self.estado = EstadoTrabajo(self.estado)
 
     @property
     def esta_activo(self) -> bool:
-        return self.estado != EstadoTrabajo.ENTREGADO
+        return self.estado.esta_abierto
 
     def validar(self) -> None:
         if not self.titulo or not self.titulo.strip():
@@ -306,7 +338,24 @@ class Evento:
 
 class RolUsuario(StrEnum):
     ADMINISTRADOR = "Administrador"
-    OPERADOR = "Operador"
+    USUARIO = "Usuario"
+
+
+@dataclass
+class Egreso:
+    concepto: str
+    monto: float
+    fecha: date
+    categoria: str = "Otros"
+    proyecto_id: Optional[int] = None
+    notas: str = ""
+    id: Optional[int] = None
+
+    def validar(self) -> None:
+        if not self.concepto or not self.concepto.strip():
+            raise DatosInvalidosError("El concepto del egreso es obligatorio.")
+        if self.monto <= 0:
+            raise DatosInvalidosError("El monto del egreso debe ser mayor a cero.")
 
 
 @dataclass
@@ -316,11 +365,12 @@ class Usuario:
     usuario: str
     nombre: str = ""
     email: str = ""
-    rol: RolUsuario = RolUsuario.OPERADOR
+    rol: RolUsuario = RolUsuario.USUARIO
     activo: bool = True
     debe_cambiar_password: bool = False
     ultimo_acceso: Optional[datetime] = None
     id: Optional[int] = None
+    fotografo_id: Optional[int] = None
 
     def __post_init__(self) -> None:
         self.rol = RolUsuario(self.rol)

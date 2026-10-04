@@ -1,4 +1,4 @@
-"""Módulo D — Contratos y plantillas (RF-06)."""
+"""Módulo D — Contratos y plantillas."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from .base import VistaBase
 class VistaContratos(VistaBase):
     clave = "contratos"
     titulo = "Contratos y plantillas"
-    descripcion = "Módulo D · generación de contratos a partir de plantillas vinculadas a cada proyecto"
+    descripcion = "Contratos generados a partir de plantillas y vinculados a cada proyecto"
 
     def _construir(self) -> None:
         contenedor = ctk.CTkFrame(self, fg_color="transparent")
@@ -54,7 +54,7 @@ class VistaContratos(VistaBase):
         ]
         self.tabla_contratos = Tabla(self._tab.tab("Contratos"), columnas_c,
                                      doble_click=lambda _e: self._editar_contrato(),
-                                     altura=16)
+                                     altura=4)
         self.tabla_contratos.pack(fill="both", expand=True)
 
         columnas_p = [
@@ -64,7 +64,7 @@ class VistaContratos(VistaBase):
         ]
         self.tabla_plantillas = Tabla(self._tab.tab("Plantillas"), columnas_p,
                                       doble_click=lambda _e: self._editar_plantilla(),
-                                      altura=16)
+                                      altura=4)
         self.tabla_plantillas.pack(fill="both", expand=True)
 
         self._pie = ctk.CTkLabel(contenedor, text="", font=("Segoe UI", 11),

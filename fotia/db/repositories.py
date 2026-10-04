@@ -19,8 +19,12 @@ from ..domain.errors import (
     EliminacionRestringidaError,
 )
 from ..domain.models import (
+    CATEGORIAS_EGRESO,
+    ROLES_TRABAJO,
+    TIPOS_PROYECTO,
     Cliente,
     Contrato,
+    Egreso,
     Equipo,
     EstadoEquipo,
     EstadoProyecto,
@@ -87,7 +91,7 @@ def _map_equipo(row: sqlite3.Row) -> Equipo:
             id=row["f_id"],
         )
     return Equipo(
-        numero_serie=row["numero_serie"],
+        numero_serie=row["numero_serie"] or "",
         marca=row["marca"],
         modelo=row["modelo"],
         estado=EstadoEquipo(row["estado"]),
@@ -143,13 +147,14 @@ def _map_proyecto(row: sqlite3.Row, pagos: Sequence[Pago] = ()) -> Proyecto:
         direccion=row["direccion"] or "",
         notas=row["notas"] or "",
         pagos=list(pagos),
+        tipo=row["tipo"] or "",
     )
     proyecto.telefono_cliente = row["cliente_telefono"] or ""  # type: ignore[attr-defined]
     return proyecto
 
 
 # --------------------------------------------------------------------------- #
-# Módulo B — Fotógrafos (RF-04)
+# Módulo B — Fotógrafos
 # --------------------------------------------------------------------------- #
 
 
@@ -171,7 +176,7 @@ class FotografoRepo:
         return _map_fotografo(fila) if fila else None
 
     def detalle(self, fotografo_id: int) -> Optional[Fotografo]:
-        """Fotógrafo con sus equipos tomados y sus trabajos (RF-04)."""
+        """Fotógrafo con sus equipos tomados y sus trabajos."""
         fotografo = self.obtener(fotografo_id)
         if fotografo is None:
             return None
@@ -180,14 +185,16 @@ class FotografoRepo:
         return fotografo
 
     def listar_resumen(self) -> list[dict]:
-        """Listado con contadores calculados en SQL (RNF-03: una sola consulta)."""
+        """Listado con contadores calculados en SQL (Una sola consulta)."""
         sql = (
             "SELECT f.*, "
             " (SELECT COUNT(*) FROM equipos e WHERE e.fotografo_id = f.id) AS n_equipos,"
             " (SELECT COUNT(*) FROM trabajos_pendientes t WHERE t.fotografo_id = f.id "
-            "   AND t.estado <> 'Entregado') AS n_activos,"
+            "   AND t.estado IN ('Pendiente', 'En edición')) AS n_activos,"
             " (SELECT MIN(t.fecha_entrega) FROM trabajos_pendientes t "
-            "   WHERE t.fotografo_id = f.id AND t.estado <> 'Entregado') AS proxima "
+            "   WHERE t.fotografo_id = f.id AND t.estado IN ('Pendiente', 'En edición')) "
+            "   AS proxima, "
+            " (SELECT u.rol FROM usuarios u WHERE u.fotografo_id = f.id LIMIT 1) AS rol "
             "FROM fotografos f ORDER BY f.nombre, f.apellido"
         )
         filas = self.conn.execute(sql).fetchall()
@@ -197,6 +204,7 @@ class FotografoRepo:
                 "n_equipos": int(r["n_equipos"]),
                 "n_activos": int(r["n_activos"]),
                 "proxima": a_fecha(r["proxima"]),
+                "rol": r["rol"] or "",
             }
             for r in filas
         ]
@@ -219,7 +227,7 @@ class FotografoRepo:
             "WHERE t.fotografo_id = ?"
         )
         if solo_activos:
-            sql += " AND t.estado <> 'Entregado'"
+            sql += " AND t.estado IN ('Pendiente', 'En edición')"
         sql += " ORDER BY COALESCE(t.fecha_entrega, '9999-12-31'), t.id"
         filas = self.conn.execute(sql, (fotografo_id,)).fetchall()
         return [_map_trabajo(r) for r in filas]
@@ -261,7 +269,7 @@ class FotografoRepo:
         return fotografo
 
     def eliminar(self, fotografo_id: int) -> None:
-        """RNF-04: bloquea borrar fotógrafos con entregas o equipos activos."""
+        """Bloquea borrar fotógrafos con entregas o equipos activos."""
         fotografo = self.detalle(fotografo_id)
         if fotografo is None:
             return
@@ -276,7 +284,7 @@ class FotografoRepo:
 
 
 # --------------------------------------------------------------------------- #
-# Módulo A — Equipos (RF-01 / RF-02 / RF-03)
+# Módulo A — Equipos
 # --------------------------------------------------------------------------- #
 
 
@@ -294,7 +302,7 @@ class EquipoRepo:
             params.append(str(estado))
         if texto.strip():
             condiciones.append(
-                "(e.numero_serie LIKE ? OR e.marca LIKE ? OR e.modelo LIKE ? "
+                "(COALESCE(e.numero_serie, '') LIKE ? OR e.marca LIKE ? OR e.modelo LIKE ? "
                 "OR COALESCE(f.nombre, '') LIKE ? OR COALESCE(f.apellido, '') LIKE ?)"
             )
             patron = f"%{texto.strip()}%"
@@ -312,7 +320,7 @@ class EquipoRepo:
     def crear(self, equipo: Equipo) -> Equipo:
         if equipo.estado == EstadoEquipo.EN_USO:
             raise DatosInvalidosError(
-                "Un equipo recién creado no puede estar 'En use'. Asignelo desde el stock."
+                "Un equipo recién creado no puede estar 'En uso'. Asígnelo desde el stock."
             )
         if not equipo.marca.strip() or not equipo.modelo.strip():
             raise DatosInvalidosError("Marca y modelo son obligatorios.")
@@ -322,7 +330,7 @@ class EquipoRepo:
                 "fecha_service_ultimo, fecha_service_proximo, estado, fotografo_id, notas) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
-                    equipo.numero_serie.strip(),
+                    equipo.numero_serie.strip() or None,
                     equipo.marca.strip(),
                     equipo.modelo.strip(),
                     _f(equipo.fecha_adquisicion),
@@ -346,13 +354,15 @@ class EquipoRepo:
             raise DatosInvalidosError("Equipo sin id: no se puede actualizar.")
         if equipo.estado == EstadoEquipo.EN_USO and equipo.fotografo_actual is None:
             raise DatosInvalidosError("Un equipo 'En uso' requiere fotógrafo responsable.")
+        if not equipo.marca.strip() or not equipo.modelo.strip():
+            raise DatosInvalidosError("Marca y modelo son obligatorios.")
         try:
             self.conn.execute(
                 "UPDATE equipos SET numero_serie=?, marca=?, modelo=?, "
                 "fecha_adquisicion=?, fecha_service_ultimo=?, fecha_service_proximo=?, "
                 "estado=?, fotografo_id=?, notas=? WHERE id=?",
                 (
-                    equipo.numero_serie.strip(),
+                    equipo.numero_serie.strip() or None,
                     equipo.marca.strip(),
                     equipo.modelo.strip(),
                     _f(equipo.fecha_adquisicion),
@@ -388,8 +398,14 @@ class EquipoRepo:
         fotografo_id: int,
         fecha: Fecha = None,
         observaciones: str = "",
+        *,
+        proyecto_id: Optional[int] = None,
+        fecha_prevista: Fecha = None,
     ) -> Equipo:
-        """RF-02: transición a ``En uso`` + registro en el historial."""
+        """Transición a ``En uso`` + registro en el historial.
+
+        ``fecha`` es el retiro; ``fecha_prevista``, cuándo se espera la entrega.
+        """
         equipo = self.obtener(equipo_id)
         if equipo is None:
             raise DatosInvalidosError("El equipo seleccionado no existe.")
@@ -398,6 +414,12 @@ class EquipoRepo:
         ).fetchone()
         if fila is None:
             raise DatosInvalidosError("El fotógrafo seleccionado no existe.")
+        retiro = a_fecha(fecha) or date.today()
+        prevista = a_fecha(fecha_prevista)
+        if prevista is not None and prevista < retiro:
+            raise DatosInvalidosError(
+                "La fecha de entrega no puede ser anterior a la de retiro."
+            )
         fotografo = _map_fotografo(fila)
         equipo.asignar_a_fotografo(fotografo)  # lanza EquipoNoDisponibleException
         self.conn.execute(
@@ -406,9 +428,10 @@ class EquipoRepo:
         )
         self.conn.execute(
             "INSERT INTO historial_asignaciones "
-            "(equipo_id, fotografo_id, fecha_asignacion, observaciones) "
-            "VALUES (?, ?, ?, ?)",
-            (equipo_id, fotografo_id, _f(fecha) or a_texto(date.today()), observaciones),
+            "(equipo_id, fotografo_id, fecha_asignacion, observaciones, proyecto_id, "
+            "fecha_prevista) VALUES (?, ?, ?, ?, ?, ?)",
+            (equipo_id, fotografo_id, a_texto(retiro), observaciones, proyecto_id,
+             _f(prevista)),
         )
         self.conn.commit()
         return equipo
@@ -425,9 +448,10 @@ class EquipoRepo:
             (equipo_id,),
         )
         self.conn.execute(
-            "UPDATE historial_asignaciones SET fecha_devolucion = ?, observaciones = ? "
+            "UPDATE historial_asignaciones SET fecha_devolucion = ?, "
+            "observaciones = CASE WHEN ? = '' THEN observaciones ELSE ? END "
             "WHERE equipo_id = ? AND fecha_devolucion IS NULL",
-            (_f(fecha) or a_texto(date.today()), observaciones, equipo_id),
+            (_f(fecha) or a_texto(date.today()), observaciones, observaciones, equipo_id),
         )
         self.conn.commit()
         return equipo
@@ -437,10 +461,11 @@ class EquipoRepo:
     ) -> list[dict]:
         sql = (
             "SELECT h.*, e.marca, e.modelo, e.numero_serie, "
-            "f.nombre AS f_nombre, f.apellido AS f_apellido "
+            "f.nombre AS f_nombre, f.apellido AS f_apellido, p.titulo AS p_titulo "
             "FROM historial_asignaciones h "
             "JOIN equipos e ON e.id = h.equipo_id "
-            "LEFT JOIN fotografos f ON f.id = h.fotografo_id WHERE 1=1"
+            "LEFT JOIN fotografos f ON f.id = h.fotografo_id "
+            "LEFT JOIN proyectos p ON p.id = h.proyecto_id WHERE 1=1"
         )
         params: list = []
         if equipo_id is not None:
@@ -456,12 +481,12 @@ class EquipoRepo:
     def alertas_service(
         self, dias_aviso: int = 30, hoy: Optional[date] = None
     ) -> list[tuple[Equipo, EstadoService]]:
-        """RF-03: service vencido o próximo a vencer."""
+        """Service vencido o próximo a vencer."""
         return equipos_en_alerta(self.listar(), hoy=hoy, dias_aviso=dias_aviso)
 
 
 # --------------------------------------------------------------------------- #
-# Clientes (RF-05)
+# Clientes
 # --------------------------------------------------------------------------- #
 
 
@@ -539,7 +564,7 @@ class ClienteRepo:
 
 
 # --------------------------------------------------------------------------- #
-# Módulo C — Proyectos, seña y pagos (RF-05)
+# Módulo C — Proyectos, seña y pagos
 # --------------------------------------------------------------------------- #
 
 
@@ -560,6 +585,7 @@ def _map_trabajo(row: sqlite3.Row) -> TrabajoPendiente:
         id=row["id"],
         fotografo=fotografo,
         proyecto=proyecto,
+        rol=row["rol"] or "",
     )
 
 
@@ -580,7 +606,7 @@ class ProyectoRepo:
         return proyectos
 
     def titulos(self) -> dict[int, str]:
-        """``id ➜ título`` sin cargar clientes ni pagos (calendario, RNF-03)."""
+        """``id ➜ título`` sin cargar clientes ni pagos (calendario)."""
         filas = self.conn.execute("SELECT id, titulo FROM proyectos").fetchall()
         return {r["id"]: r["titulo"] or "" for r in filas}
 
@@ -638,8 +664,8 @@ class ProyectoRepo:
             raise DatosInvalidosError("Debe indicar el cliente del proyecto.")
         cur = self.conn.execute(
             "INSERT INTO proyectos (titulo, cliente_id, fotografo_id, fecha_evento, "
-            "estado, cobro_total, sena_monto, sena_fecha, sena_medio, direccion, notas) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "estado, cobro_total, sena_monto, sena_fecha, sena_medio, direccion, notas, "
+            "tipo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 proyecto.titulo.strip(),
                 proyecto.cliente_id,
@@ -652,6 +678,7 @@ class ProyectoRepo:
                 proyecto.sena_medio,
                 proyecto.direccion,
                 proyecto.notas,
+                proyecto.tipo.strip(),
             ),
         )
         proyecto.id = cur.lastrowid
@@ -662,10 +689,18 @@ class ProyectoRepo:
         if proyecto.id is None:
             raise DatosInvalidosError("Proyecto sin id: no se puede actualizar.")
         proyecto.validar()
+        abonado = self.conn.execute(
+            "SELECT COALESCE(SUM(monto), 0) FROM pagos WHERE proyecto_id = ?",
+            (proyecto.id,),
+        ).fetchone()[0] + proyecto.sena
+        if round(abonado - proyecto.cobro_total, 2) > 0:
+            raise DatosInvalidosError(
+                "El cobro total no puede ser menor a lo ya abonado (seña + pagos)."
+            )
         self.conn.execute(
             "UPDATE proyectos SET titulo=?, cliente_id=?, fotografo_id=?, fecha_evento=?, "
             "estado=?, cobro_total=?, sena_monto=?, sena_fecha=?, sena_medio=?, "
-            "direccion=?, notas=? WHERE id=?",
+            "direccion=?, notas=?, tipo=? WHERE id=?",
             (
                 proyecto.titulo.strip(),
                 proyecto.cliente_id,
@@ -678,6 +713,7 @@ class ProyectoRepo:
                 proyecto.sena_medio,
                 proyecto.direccion,
                 proyecto.notas,
+                proyecto.tipo.strip(),
                 proyecto.id,
             ),
         )
@@ -697,8 +733,10 @@ class ProyectoRepo:
         medio: str = "Efectivo",
         notas: str = "",
     ) -> Pago:
-        if monto <= 0:
-            raise DatosInvalidosError("El monto del pago debe ser mayor a cero.")
+        proyecto = self.obtener(proyecto_id)
+        if proyecto is None:
+            raise DatosInvalidosError("El proyecto seleccionado no existe.")
+        proyecto.validar_pago(float(monto))
         cur = self.conn.execute(
             "INSERT INTO pagos (proyecto_id, monto, fecha, medio, notas) VALUES (?, ?, ?, ?, ?)",
             (proyecto_id, float(monto), _f(fecha) or a_texto(date.today()), medio, notas),
@@ -713,6 +751,12 @@ class ProyectoRepo:
             id=cur.lastrowid,
         )
 
+    def tipos(self) -> list[str]:
+        """Tipos de proyecto sugeridos: los de partida más los ya usados."""
+        usados = [r[0] for r in self.conn.execute(
+            "SELECT DISTINCT tipo FROM proyectos WHERE tipo <> '' ORDER BY tipo")]
+        return TIPOS_PROYECTO + [t for t in usados if t not in TIPOS_PROYECTO]
+
     def eliminar_pago(self, pago_id: int) -> None:
         self.conn.execute("DELETE FROM pagos WHERE id = ?", (pago_id,))
         self.conn.commit()
@@ -722,6 +766,11 @@ class ProyectoRepo:
     ) -> None:
         if monto < 0:
             raise DatosInvalidosError("La seña no puede ser negativa.")
+        proyecto = self.obtener(proyecto_id)
+        if proyecto is not None and round(
+            monto + proyecto.total_pagos_parciales - proyecto.cobro_total, 2
+        ) > 0:
+            raise DatosInvalidosError("La seña más los pagos supera el cobro total.")
         self.conn.execute(
             "UPDATE proyectos SET sena_monto = ?, sena_fecha = ?, sena_medio = ? WHERE id = ?",
             (float(monto), _f(fecha) or a_texto(date.today()), medio, proyecto_id),
@@ -730,7 +779,7 @@ class ProyectoRepo:
 
 
 # --------------------------------------------------------------------------- #
-# Módulo D — Servicios, plantillas y contratos (RF-06 / RF-07)
+# Módulo D — Servicios, plantillas y contratos
 # --------------------------------------------------------------------------- #
 
 
@@ -940,7 +989,7 @@ class ContratoRepo:
 
 
 # --------------------------------------------------------------------------- #
-# Trabajos pendientes y calendario (RF-04 / RF-08)
+# Trabajos pendientes y calendario
 # --------------------------------------------------------------------------- #
 
 
@@ -974,7 +1023,7 @@ class TrabajoRepo:
             params.append(proyecto_id)
         if condiciones:
             sql += " WHERE " + " AND ".join(condiciones)
-        sql += " ORDER BY t.estado <> 'Entregado' DESC, "
+        sql += " ORDER BY t.estado IN ('Pendiente', 'En edición') DESC, "
         sql += "COALESCE(t.fecha_entrega, '9999-12-31'), t.id"
         return [_map_trabajo(r) for r in self.conn.execute(sql, params).fetchall()]
 
@@ -988,7 +1037,7 @@ class TrabajoRepo:
         trabajo.validar()
         cur = self.conn.execute(
             "INSERT INTO trabajos_pendientes (titulo, descripcion, fotografo_id, "
-            "proyecto_id, fecha_entrega, estado) VALUES (?, ?, ?, ?, ?, ?)",
+            "proyecto_id, fecha_entrega, estado, rol) VALUES (?, ?, ?, ?, ?, ?, ?)",
             (
                 trabajo.titulo.strip(),
                 trabajo.descripcion,
@@ -996,6 +1045,7 @@ class TrabajoRepo:
                 trabajo.proyecto_id,
                 _f(trabajo.fecha_entrega),
                 str(trabajo.estado),
+                trabajo.rol.strip(),
             ),
         )
         trabajo.id = cur.lastrowid
@@ -1008,7 +1058,7 @@ class TrabajoRepo:
         trabajo.validar()
         self.conn.execute(
             "UPDATE trabajos_pendientes SET titulo=?, descripcion=?, fotografo_id=?, "
-            "proyecto_id=?, fecha_entrega=?, estado=? WHERE id=?",
+            "proyecto_id=?, fecha_entrega=?, estado=?, rol=? WHERE id=?",
             (
                 trabajo.titulo.strip(),
                 trabajo.descripcion,
@@ -1016,6 +1066,7 @@ class TrabajoRepo:
                 trabajo.proyecto_id,
                 _f(trabajo.fecha_entrega),
                 str(trabajo.estado),
+                trabajo.rol.strip(),
                 trabajo.id,
             ),
         )
@@ -1025,6 +1076,19 @@ class TrabajoRepo:
     def eliminar(self, trabajo_id: int) -> None:
         self.conn.execute("DELETE FROM trabajos_pendientes WHERE id = ?", (trabajo_id,))
         self.conn.commit()
+
+    def cambiar_estado(self, trabajo_id: int, estado: EstadoTrabajo) -> None:
+        self.conn.execute(
+            "UPDATE trabajos_pendientes SET estado = ? WHERE id = ?",
+            (str(EstadoTrabajo(estado)), trabajo_id),
+        )
+        self.conn.commit()
+
+    def roles(self) -> list[str]:
+        """Roles sugeridos: los de partida más los que ya se usaron."""
+        usados = [r[0] for r in self.conn.execute(
+            "SELECT DISTINCT rol FROM trabajos_pendientes WHERE rol <> '' ORDER BY rol")]
+        return ROLES_TRABAJO + [r for r in usados if r not in ROLES_TRABAJO]
 
 
 _EVENTOS_UNION = """
@@ -1039,7 +1103,7 @@ _EVENTOS_UNION = """
                t.titulo || ' — ' || f.nombre || ' ' || f.apellido,
                'Entrega', t.fotografo_id, t.proyecto_id
           FROM trabajos_pendientes t JOIN fotografos f ON f.id = t.fotografo_id
-         WHERE t.fecha_entrega IS NOT NULL AND t.estado <> 'Entregado'
+         WHERE t.fecha_entrega IS NOT NULL AND t.estado IN ('Pendiente', 'En edición')
         UNION ALL
         SELECT e.fecha_service_proximo, '',
                'Service: ' || e.marca || ' ' || e.modelo || ' (' || e.numero_serie || ')',
@@ -1141,7 +1205,7 @@ class EventoRepo:
         fin: date,
         fotografo_id: Optional[int] = None,
     ) -> list[Evento]:
-        """RF-08: eventos de clientes + entregas + service + agenda personal."""
+        """Eventos de clientes + entregas + service + agenda personal."""
         sql = "SELECT * FROM (" + _EVENTOS_UNION + ") WHERE fecha BETWEEN ? AND ?"
         params: list = [a_texto(inicio), a_texto(fin)]
         if fotografo_id is not None:
@@ -1181,6 +1245,7 @@ class UsuarioRepo:
             ultimo_acceso=(datetime.fromisoformat(row["ultimo_acceso"])
                            if row["ultimo_acceso"] else None),
             id=row["id"],
+            fotografo_id=row["fotografo_id"],
         )
 
     def _fila(self, usuario: str) -> Optional[sqlite3.Row]:
@@ -1206,6 +1271,29 @@ class UsuarioRepo:
         fila = self._fila(usuario)
         return self._map(fila) if fila else None
 
+    def nombre_disponible(self, base: str) -> str:
+        """``base`` o ``base2``, ``base3``… hasta dar con un usuario libre."""
+        candidato, n = base, 2
+        while self._fila(candidato) is not None:
+            candidato, n = f"{base}{n}", n + 1
+        return candidato
+
+    def crear_para_fotografo(self, fotografo: Fotografo, rol: RolUsuario) -> tuple[Usuario, str]:
+        """Cuenta de acceso del fotógrafo: usuario derivado de su nombre y una
+        contraseña provisoria que deberá cambiar al ingresar."""
+        usuario = Usuario(
+            usuario=self.nombre_disponible(auth.sugerir_usuario(
+                fotografo.nombre, fotografo.apellido)),
+            nombre=fotografo.nombre_completo,
+            email=fotografo.email,
+            rol=rol,
+            debe_cambiar_password=True,
+            fotografo_id=fotografo.id,
+        )
+        temporal = auth.generar_password_temporal()
+        self.crear(usuario, temporal)
+        return usuario, temporal
+
     # -- altas, bajas y cambios -------------------------------------------- #
     def crear(self, usuario: Usuario, password: str) -> str:
         """Crea la cuenta y devuelve su código de recuperación (se muestra una vez)."""
@@ -1215,7 +1303,8 @@ class UsuarioRepo:
         try:
             cur = self.conn.execute(
                 "INSERT INTO usuarios (usuario, nombre, email, rol, password_hash, "
-                "codigo_hash, activo, debe_cambiar) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "codigo_hash, activo, debe_cambiar, fotografo_id) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     usuario.usuario.strip(),
                     usuario.nombre.strip(),
@@ -1225,6 +1314,7 @@ class UsuarioRepo:
                     auth.hash_password(auth.normalizar_codigo(codigo)),
                     1 if usuario.activo else 0,
                     1 if usuario.debe_cambiar_password else 0,
+                    usuario.fotografo_id,
                 ),
             )
         except sqlite3.IntegrityError as exc:
@@ -1387,6 +1477,152 @@ class UsuarioRepo:
 
 
 # --------------------------------------------------------------------------- #
+# Egresos y resumen general (sólo administradores)
+# --------------------------------------------------------------------------- #
+
+
+class EgresoRepo:
+    def __init__(self, conn: sqlite3.Connection):
+        self.conn = conn
+
+    def crear(self, egreso: Egreso) -> Egreso:
+        egreso.validar()
+        cur = self.conn.execute(
+            "INSERT INTO egresos (fecha, concepto, categoria, monto, proyecto_id, notas) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (a_texto(egreso.fecha), egreso.concepto.strip(),
+             egreso.categoria.strip() or "Otros", float(egreso.monto),
+             egreso.proyecto_id, egreso.notas),
+        )
+        egreso.id = cur.lastrowid
+        self.conn.commit()
+        return egreso
+
+    def eliminar(self, egreso_id: int) -> None:
+        self.conn.execute("DELETE FROM egresos WHERE id = ?", (egreso_id,))
+        self.conn.commit()
+
+    def categorias(self) -> list[str]:
+        usadas = [r[0] for r in self.conn.execute(
+            "SELECT DISTINCT categoria FROM egresos ORDER BY categoria")]
+        return CATEGORIAS_EGRESO + [c for c in usadas if c not in CATEGORIAS_EGRESO]
+
+
+class InformeRepo:
+    """Consultas agregadas del resumen general. Todas reciben un período
+    ``[desde, hasta]``; ``None`` deja ese extremo abierto."""
+
+    def __init__(self, conn: sqlite3.Connection):
+        self.conn = conn
+
+    @staticmethod
+    def _rango(desde: Fecha, hasta: Fecha) -> tuple[str, str]:
+        return (_f(desde) or "0000-01-01", _f(hasta) or "9999-12-31")
+
+    def _filas(self, sql: str, params: Sequence) -> list[dict]:
+        return [dict(r) for r in self.conn.execute(sql, list(params)).fetchall()]
+
+    # -- dinero ------------------------------------------------------------ #
+    def movimientos(self, desde: Fecha = None, hasta: Fecha = None) -> list[dict]:
+        """Señas y pagos (ingresos) y egresos, del más reciente al más antiguo."""
+        r = self._rango(desde, hasta)
+        return self._filas(
+            """
+            SELECT * FROM (
+                SELECT p.sena_fecha AS fecha, 'Ingreso' AS clase, 'Seña' AS concepto,
+                       p.titulo AS proyecto, c.nombre AS cliente, p.tipo AS categoria,
+                       p.sena_medio AS medio, p.sena_monto AS monto, NULL AS egreso_id
+                  FROM proyectos p JOIN clientes c ON c.id = p.cliente_id
+                 WHERE p.sena_monto > 0 AND p.sena_fecha IS NOT NULL
+                UNION ALL
+                SELECT g.fecha, 'Ingreso', COALESCE(NULLIF(g.notas, ''), 'Pago'),
+                       p.titulo, c.nombre, p.tipo, g.medio, g.monto, NULL
+                  FROM pagos g JOIN proyectos p ON p.id = g.proyecto_id
+                  JOIN clientes c ON c.id = p.cliente_id
+                UNION ALL
+                SELECT e.fecha, 'Egreso', e.concepto, COALESCE(p.titulo, ''), '',
+                       e.categoria, '', e.monto, e.id
+                  FROM egresos e LEFT JOIN proyectos p ON p.id = e.proyecto_id
+            ) WHERE fecha BETWEEN ? AND ? ORDER BY fecha DESC, clase
+            """, r)
+
+    def saldo_por_cobrar(self) -> float:
+        fila = self.conn.execute(
+            "SELECT COALESCE(SUM(MAX(p.cobro_total - p.sena_monto - COALESCE(("
+            "SELECT SUM(monto) FROM pagos g WHERE g.proyecto_id = p.id), 0), 0)), 0) "
+            "FROM proyectos p"
+        ).fetchone()
+        return float(fila[0])
+
+    # -- equipos ----------------------------------------------------------- #
+    def salidas_por_equipo(self, desde: Fecha = None, hasta: Fecha = None) -> list[dict]:
+        return self._filas(
+            "SELECT e.marca || ' ' || e.modelo AS equipo, "
+            "COALESCE(e.numero_serie, '') AS numero_serie, e.estado, "
+            "COUNT(h.id) AS salidas, MAX(h.fecha_asignacion) AS ultima "
+            "FROM equipos e LEFT JOIN historial_asignaciones h ON h.equipo_id = e.id "
+            "AND h.fecha_asignacion BETWEEN ? AND ? "
+            "GROUP BY e.id ORDER BY salidas DESC, equipo", self._rango(desde, hasta))
+
+    # -- personal ---------------------------------------------------------- #
+    # Un trabajo cuenta en la fecha del evento de su proyecto o, si no tiene
+    # proyecto, en su fecha de entrega. Los cancelados no cuentan.
+    _TRABAJOS = (
+        "FROM trabajos_pendientes t LEFT JOIN proyectos p ON p.id = t.proyecto_id "
+        "WHERE t.estado <> 'Cancelado' "
+        "AND COALESCE(p.fecha_evento, t.fecha_entrega, '0000-01-01') BETWEEN ? AND ? "
+    )
+
+    def eventos_por_fotografo(self, desde: Fecha = None, hasta: Fecha = None) -> list[dict]:
+        r = self._rango(desde, hasta)
+        return self._filas(
+            "SELECT f.nombre || ' ' || f.apellido AS fotografo, "
+            " (SELECT COUNT(*) FROM proyectos p WHERE p.fotografo_id = f.id "
+            "   AND COALESCE(p.fecha_evento, '0000-01-01') BETWEEN ? AND ?) AS proyectos, "
+            " (SELECT COUNT(*) " + self._TRABAJOS + " AND t.fotografo_id = f.id) AS trabajos, "
+            " (SELECT COUNT(DISTINCT t.proyecto_id) " + self._TRABAJOS
+            + " AND t.fotografo_id = f.id) AS eventos "
+            "FROM fotografos f ORDER BY trabajos + proyectos DESC, fotografo",
+            r + r + r)
+
+    def roles_cubiertos(self, desde: Fecha = None, hasta: Fecha = None) -> list[dict]:
+        return self._filas(
+            "SELECT COALESCE(NULLIF(t.rol, ''), 'Sin rol') AS rol, COUNT(*) AS veces, "
+            "COUNT(DISTINCT t.proyecto_id) AS eventos " + self._TRABAJOS
+            + "GROUP BY 1 ORDER BY veces DESC, rol", self._rango(desde, hasta))
+
+    # -- clientes, proyectos y contratos ----------------------------------- #
+    def movimientos_por_cliente(self, desde: Fecha = None, hasta: Fecha = None) -> list[dict]:
+        return self._filas(
+            "SELECT c.nombre AS cliente, COUNT(p.id) AS proyectos, "
+            "COALESCE(SUM(p.cobro_total), 0) AS contratado, "
+            "COALESCE(SUM(p.sena_monto + COALESCE((SELECT SUM(monto) FROM pagos g "
+            "  WHERE g.proyecto_id = p.id), 0)), 0) AS cobrado "
+            "FROM clientes c JOIN proyectos p ON p.cliente_id = c.id "
+            "WHERE COALESCE(p.fecha_evento, substr(p.creado_en, 1, 10)) BETWEEN ? AND ? "
+            "GROUP BY c.id ORDER BY contratado DESC, cliente", self._rango(desde, hasta))
+
+    def proyectos_por_tipo(self, desde: Fecha = None, hasta: Fecha = None) -> list[dict]:
+        return self._filas(
+            "SELECT COALESCE(NULLIF(p.tipo, ''), 'Sin tipo') AS tipo, COUNT(*) AS proyectos, "
+            "COALESCE(SUM(p.cobro_total), 0) AS contratado FROM proyectos p "
+            "WHERE COALESCE(p.fecha_evento, substr(p.creado_en, 1, 10)) BETWEEN ? AND ? "
+            "GROUP BY 1 ORDER BY proyectos DESC, tipo", self._rango(desde, hasta))
+
+    def proyectos_por_estado(self, desde: Fecha = None, hasta: Fecha = None) -> list[dict]:
+        return self._filas(
+            "SELECT p.estado, COUNT(*) AS proyectos FROM proyectos p "
+            "WHERE COALESCE(p.fecha_evento, substr(p.creado_en, 1, 10)) BETWEEN ? AND ? "
+            "GROUP BY 1 ORDER BY proyectos DESC", self._rango(desde, hasta))
+
+    def contratos_por_estado(self, desde: Fecha = None, hasta: Fecha = None) -> list[dict]:
+        return self._filas(
+            "SELECT estado, COUNT(*) AS contratos FROM contratos "
+            "WHERE COALESCE(fecha, '0000-01-01') BETWEEN ? AND ? "
+            "GROUP BY 1 ORDER BY contratos DESC", self._rango(desde, hasta))
+
+
+# --------------------------------------------------------------------------- #
 # Agrupador de repositorios + utilidades de la app
 # --------------------------------------------------------------------------- #
 
@@ -1406,6 +1642,8 @@ class Repositorios:
         self.trabajos = TrabajoRepo(conn)
         self.eventos = EventoRepo(conn)
         self.usuarios = UsuarioRepo(conn)
+        self.egresos = EgresoRepo(conn)
+        self.informes = InformeRepo(conn)
 
     # -- configuración ----------------------------------------------------- #
     def config(self, clave: str, defecto: str = "") -> str:
@@ -1440,7 +1678,8 @@ class Repositorios:
             "clientes": contar("SELECT COUNT(*) FROM clientes"),
             "proyectos": contar("SELECT COUNT(*) FROM proyectos"),
             "trabajos_abiertos": contar(
-                "SELECT COUNT(*) FROM trabajos_pendientes WHERE estado <> 'Entregado'"
+                "SELECT COUNT(*) FROM trabajos_pendientes "
+                "WHERE estado IN ('Pendiente', 'En edición')"
             ),
             "eventos": contar("SELECT COUNT(*) FROM eventos"),
             "servicios": contar("SELECT COUNT(*) FROM servicios"),

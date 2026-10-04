@@ -1,4 +1,4 @@
-"""Capa de datos: SQLite embebido (RNF-02) y repositorios."""
+"""Capa de datos: SQLite embebido y repositorios."""
 
 from .connection import BaseDatos, conectar
 from .repositories import Repositorios
