@@ -24,6 +24,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
   y se crea su cuenta de acceso con contraseña provisoria.
 - **Historial de entregas** por fotógrafo: activas, cerradas y canceladas, con
   acciones para marcar entregada, cancelar o reabrir.
+- **Categorías del tarifario** administrables: se agregan y quitan desde el
+  botón «Categorías» (sólo se quita una categoría sin servicios).
+- Sección **Configuración** con Mi cuenta, Apariencia, Versión y Respaldo de
+  datos (reemplaza a «Respaldo y datos» y al pie de la barra lateral).
+- **Líneas de grilla** entre filas y columnas en todas las tablas.
 
 ### Cambiado
 
@@ -33,8 +38,15 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 - «Ficha» de un equipo pasa a ser su historial de movimientos.
 - Fotógrafos y servicios del tarifario ya no tienen estado activo/inactivo.
 - El rol «Operador» pasa a llamarse «Usuario».
-- Panel de control con tarjetas de colores, tipografía en negrita y saldo a
-  cobrar en verde.
+- Panel de control con tarjetas compactas de color sólido y tipografía en
+  negrita; la sección «Inventario» lista los equipos en verde (disponibles) o
+  rojo (en uso) con la fecha de su próximo service.
+- En el inventario de equipos el color de cada fila indica disponibilidad; el
+  estado del service se lee en la columna «Alerta».
+- Tablas con letra más grande y filas más altas.
+- Selectores, segmentos y desplegables en azul tenue en lugar de gris.
+- «Resumen general» pasa al segundo lugar del menú.
+- Cerrar sesión pide confirmación.
 - La ventana y los diálogos se ajustan al tamaño real de la pantalla y las
   tablas se adaptan al alto disponible, sin cortar la parte inferior.
 - Se quitaron de la interfaz y del código las referencias a los códigos de

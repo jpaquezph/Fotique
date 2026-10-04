@@ -10,10 +10,11 @@ Documento de partida: [`Relevamiento Fotia.md`](Relevamiento%20Fotia.md) (SRS v2
 
 | Referencia | Contenido |
 |---|---|
-| `main` | Última versión estable (siempre actualizada). |
-| `dev` | Misma punta que `main`: rama de desarrollo para próximos cambios. |
+| `main` | Última actualización disponible. |
+| `dev` | Misma punta que `main`. |
 | `v1.0` | Tag de la versión 1.0.0, cerrada el 01/10/2026. |
 | `v1.2` | Tag de la versión 1.2.0 (04/10/2026). |
+| `1.2`, `1.3`, … | Una rama por versión, con los cambios de esa versión. `1.3` es la que está en desarrollo. |
 
 ---
 
@@ -127,7 +128,7 @@ falsos positivos de antivirus), cambiá el `EXE(...)` final del spec por el modo
 | Clientes y proyectos | Tipo de proyecto, seña, cobros con tope en el total, saldo automático | `fotia/ui/views/proyectos.py` |
 | Calendario, tarifario y contratos | Agenda unificada, precios, contratos desde plantillas | `fotia/ui/views/{calendario,servicios,contratos}.py` |
 | Resumen general | Dinero, equipos, personal, clientes y contratos por período, con gráficos | `fotia/ui/views/resumen.py` |
-| Respaldos y usuarios | Exportar/restaurar la base, cuentas y roles | `fotia/ui/views/{respaldos,usuarios}.py` |
+| Configuración y usuarios | Mi cuenta, apariencia, versión, respaldo y restauración de la base; cuentas y roles | `fotia/ui/views/{configuracion,respaldos,usuarios}.py` |
 
 ### Estructura
 

@@ -19,6 +19,7 @@ FUENTE_TITULO = ("Segoe UI", 16, "bold")
 FUENTE_SUBTITULO = ("Segoe UI", 13, "bold")
 FUENTE_NORMAL = ("Segoe UI", 11)
 FUENTE_PEQUE = ("Segoe UI", 10)
+FUENTE_TABLA = ("Segoe UI", 12)
 FUENTE_TARJETA = ("Segoe UI", 22, "bold")
 
 Color = tuple[str, str]
@@ -34,8 +35,8 @@ GRIS_TEXTO: Color = ("#6b6f7b", "#8f919b")
 
 # -- acentos para texto (legibles sobre FONDO en ambos modos) ---------------- #
 ACENTO: Color = ("#1f6fb5", "#6aaee6")
-VERDE: Color = ("#1e7f3a", "#5fbf7a")
-ROJO: Color = ("#c4323b", "#ef7a80")
+VERDE: Color = ("#16702f", "#6fd08a")
+ROJO: Color = ("#b8242e", "#ff8a8f")
 NARANJA: Color = ("#b85f14", "#e0a060")
 VIOLETA: Color = ("#7446b5", "#b396e0")
 TURQUESA: Color = ("#17807f", "#5fc4c2")
@@ -48,8 +49,20 @@ BOTONES: dict[str, tuple[Color, Color]] = {
     "aviso": (("#d9772b", "#7d5427"), ("#bd6622", "#946430")),
     "peligro": (("#d5404a", "#7c3237"), ("#b9343d", "#933b41")),
 }
-NEUTRO: Color = ("#e2e5ea", "#2a2c31")       # selectores, botones secundarios
-NEUTRO_HOVER: Color = ("#d3d7de", "#34363c")
+# Rellenos sólidos de las tarjetas del panel (texto en TEXTO_BOTON).
+RELLENOS: dict[str, Color] = {
+    "azul": ("#2f7fc4", "#2c5a82"),
+    "naranja": ("#d9772b", "#8a5a26"),
+    "violeta": ("#7a55b8", "#59428a"),
+    "turquesa": ("#1f8f8d", "#256c6b"),
+    "rojo": ("#d5404a", "#863339"),
+    "verde": ("#2b9348", "#2a6a42"),
+}
+# Selectores, segmentos y desplegables: un azul tenue de la familia del botón
+# primario en lugar de gris, para que se lean como controles y no como fondo.
+NEUTRO: Color = ("#dbe8f6", "#213447")
+NEUTRO_HOVER: Color = ("#c3d8ee", "#2b4560")
+SEGMENTO_ACTIVO: Color = ("#8fbbe6", "#3a74a6")
 SELECCION: Color = ("#c9dcf0", "#2c5a82")    # fila o segmento seleccionado
 CON_EVENTOS: Color = ("#d8e9f7", "#1f3347")  # día del calendario con agenda
 
@@ -82,16 +95,16 @@ def _cargar_tema() -> None:
                         "border_color": TEXTO_SUAVE, "checkmark_color": TEXTO_BOTON,
                         "text_color": TEXTO, "border_width": 2},
         "CTkOptionMenu": {"fg_color": NEUTRO, "button_color": NEUTRO_HOVER,
-                          "button_hover_color": BORDE, "text_color": TEXTO,
+                          "button_hover_color": SEGMENTO_ACTIVO, "text_color": TEXTO,
                           "text_color_disabled": TEXTO_TENUE},
-        "CTkSegmentedButton": {"fg_color": NEUTRO, "selected_color": SELECCION,
-                               "selected_hover_color": SELECCION,
+        "CTkSegmentedButton": {"fg_color": NEUTRO, "selected_color": SEGMENTO_ACTIVO,
+                               "selected_hover_color": SEGMENTO_ACTIVO,
                                "unselected_color": NEUTRO,
                                "unselected_hover_color": NEUTRO_HOVER,
                                "text_color": TEXTO,
                                "text_color_disabled": TEXTO_TENUE},
         "CTkComboBox": {"fg_color": FONDO, "border_color": BORDE, "border_width": 1,
-                        "button_color": NEUTRO_HOVER, "button_hover_color": BORDE,
+                        "button_color": NEUTRO_HOVER, "button_hover_color": SEGMENTO_ACTIVO,
                         "text_color": TEXTO, "text_color_disabled": TEXTO_TENUE},
         "CTkScrollbar": {"button_color": BORDE, "button_hover_color": TEXTO_TENUE},
         "CTkScrollableFrame": {"label_fg_color": RESALTE},
@@ -172,8 +185,8 @@ def aplicar_estilo_tabla(master: Optional[tkinter.Misc] = None) -> None:
         foreground=c["texto"],
         borderwidth=0,
         relief="flat",
-        rowheight=26,
-        font=FUENTE_NORMAL,
+        rowheight=30,
+        font=FUENTE_TABLA,
         padding=4,
     )
     style.configure(
@@ -182,7 +195,7 @@ def aplicar_estilo_tabla(master: Optional[tkinter.Misc] = None) -> None:
         foreground=c["texto"],
         borderwidth=0,
         relief="flat",
-        font=("Segoe UI", 10, "bold"),
+        font=("Segoe UI", 11, "bold"),
         padding=6,
     )
     style.map(

@@ -6,9 +6,9 @@ import customtkinter as ctk
 
 from ...domain.models import Servicio
 from ...util import moneda
-from ..dialogs import DialogoServicio
+from ..dialogs import DialogoCategorias, DialogoServicio
 from ..theme import GRIS_TEXTO
-from ..widgets import Tabla, boton
+from ..widgets import Tabla, boton, boton_secundario
 from .base import VistaBase
 
 
@@ -28,6 +28,8 @@ class VistaServicios(VistaBase):
         boton(barra, "Nuevo servicio", self._nuevo).pack(side="left", padx=(0, 6))
         boton(barra, "Editar", self._editar).pack(side="left", padx=(0, 6))
         boton(barra, "Eliminar", self._eliminar, color="peligro").pack(side="left", padx=(0, 6))
+        boton_secundario(barra, "Categorías", self._categorias).pack(
+            side="left", padx=(0, 6))
 
         self._categoria = ctk.StringVar(value="Todas las categorías")
         self._menu = ctk.CTkOptionMenu(
@@ -80,6 +82,10 @@ class VistaServicios(VistaBase):
         self._pie.configure(
             text=f"{len(objetos)} servicio(s) · precio promedio {moneda(promedio)}"
         )
+
+    def _categorias(self) -> None:
+        DialogoCategorias(self, self.repos.servicios).mostrar()
+        self.refrescar()
 
     def _seleccion(self):
         servicio = self.tabla.seleccionado()

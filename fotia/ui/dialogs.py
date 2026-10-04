@@ -522,14 +522,17 @@ class DialogoServicio(Dialogo):
         self._servicio = s
         self.campo_texto("nombre", "Nombre del servicio *", s.nombre if s else "",
                          "Cobertura boda (8 hs)")
-        self.campo_texto("categoria", "Categoría", s.categoria if s else "",
-                         "Coberturas, Edición, Fotolibros, Viáticos…")
+        categorias = list(categorias)
+        if s is not None and s.categoria not in categorias:
+            categorias.append(s.categoria)
+        self.campo_selector("categoria", "Categoría", categorias or ["Otros"],
+                            s.categoria if s else None)
         self.campo_monto("precio", "Precio", s.precio if s else 0.0)
         self.campo_texto("unidad", "Unidad", s.unidad if s else "servicio",
                          "servicio, evento, foto, jornada…")
         self.campo_area("notas", "Notas", s.notas if s else "", altura=90)
-        if categorias:
-            self.nota("Categorías existentes: " + ", ".join(categorias))
+        self.nota("Las categorías se agregan o quitan con el botón «Categorías» "
+                  "del tarifario.")
         self.botones("Guardar", self._guardar)
 
     def _guardar(self) -> Servicio:
@@ -1018,3 +1021,57 @@ class DialogoEgreso(Dialogo):
         )
         egreso.validar()
         return egreso
+
+
+class DialogoCategorias(Dialogo):
+    """Alta y baja de categorías del tarifario. Opera directo sobre el repositorio."""
+
+    def __init__(self, master: Any, repo: Any):
+        super().__init__(master, "Categorías del tarifario", ancho=560, alto=520)
+        self._repo = repo
+        alta = ctk.CTkFrame(self.form, fg_color="transparent")
+        alta.grid(row=self._fila, column=0, columnspan=2, sticky="ew", padx=10, pady=(4, 6))
+        self._fila += 1
+        self._nueva = ctk.CTkEntry(alta, width=300, font=FUENTE_NORMAL,
+                                   placeholder_text="Nueva categoría…")
+        self._nueva.pack(side="left")
+        boton(alta, "Agregar", self._agregar, ancho=100).pack(side="left", padx=8)
+        self._nueva.bind("<Return>", lambda _e: (self._agregar(), "break")[1])
+
+        self.tabla = Tabla(self.form, [
+            {"clave": "nombre", "titulo": "Categoría", "ancho": 300},
+            {"clave": "uso", "titulo": "Servicios", "ancho": 110, "anchor": "center"},
+        ], altura=8)
+        self.tabla.grid(row=self._fila, column=0, columnspan=2, sticky="nsew",
+                        padx=10, pady=6)
+        self._fila += 1
+        self.nota("Sólo se puede quitar una categoría que no tenga servicios.")
+        boton(self._pie, "Quitar seleccionada", self._quitar, color="peligro",
+              ancho=170).pack(side="left")
+        boton(self._pie, "Cerrar", self.cancelar, ancho=120).pack(side="right")
+        self.bind("<Escape>", lambda _e: self.cancelar())
+        self._refrescar()
+
+    def _refrescar(self) -> None:
+        filas = self._repo.categorias_con_uso()
+        self.tabla.actualizar([[nombre, str(n)] for nombre, n in filas],
+                              [nombre for nombre, _n in filas])
+
+    def _intentar(self, accion) -> None:
+        try:
+            accion()
+        except Exception as exc:  # noqa: BLE001 - se muestra al usuario
+            DialogoMensaje.error(self, "No se pudo", str(exc))
+        self._refrescar()
+
+    def _agregar(self) -> None:
+        nombre = self._nueva.get()
+        self._intentar(lambda: self._repo.crear_categoria(nombre))
+        self._nueva.delete(0, "end")
+
+    def _quitar(self) -> None:
+        nombre = self.tabla.seleccionado()
+        if nombre is None:
+            DialogoMensaje.error(self, "Sin selección", "Elija una categoría de la tabla.")
+            return
+        self._intentar(lambda: self._repo.eliminar_categoria(nombre))

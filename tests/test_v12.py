@@ -273,3 +273,27 @@ def test_migra_una_base_de_la_version_anterior(tmp_path):
         assert len(base.repos.equipos.listar()) == 3
     finally:
         base.cerrar()
+
+
+# -- categorías del tarifario ------------------------------------------------ #
+
+
+def test_categorias_del_tarifario_se_agregan_y_quitan(repos):
+    from fotia.domain.errors import EliminacionRestringidaError
+    from fotia.domain.models import Servicio
+
+    servicios = repos.servicios
+    assert servicios.categorias() == []
+    servicios.crear_categoria("Drone")
+    with pytest.raises(DatosInvalidosError):
+        servicios.crear_categoria("drone")      # ya existe (sin distinguir mayúsculas)
+    with pytest.raises(DatosInvalidosError):
+        servicios.crear_categoria("   ")
+
+    servicios.crear(Servicio(nombre="Cobertura boda", categoria="Coberturas", precio=10))
+    assert servicios.categorias_con_uso() == [("Coberturas", 1), ("Drone", 0)]
+
+    with pytest.raises(EliminacionRestringidaError):
+        servicios.eliminar_categoria("Coberturas")  # la usa un servicio
+    servicios.eliminar_categoria("Drone")
+    assert servicios.categorias() == ["Coberturas"]

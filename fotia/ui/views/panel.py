@@ -7,19 +7,18 @@ from typing import Optional
 
 import customtkinter as ctk
 
-from ...domain.models import EstadoService
+from ...domain.models import EstadoEquipo
 from ...util import fecha_legible, moneda
 from ..theme import (
-    ACENTO,
     BORDE,
     FONDO,
     GRIS_TEXTO,
     NARANJA,
+    RELLENOS,
     ROJO,
     TEXTO,
-    TURQUESA,
+    TEXTO_SUAVE,
     VERDE,
-    VIOLETA,
     Color,
 )
 from ..widgets import Tarjeta
@@ -35,10 +34,8 @@ class _Lista:
     filas se crean una vez y después solo se les cambia el texto.
     """
 
-    def __init__(self, contenedor: ctk.CTkScrollableFrame, *, apilado: bool = False):
-        """``apilado`` pone el detalle debajo del texto principal (filas largas)."""
+    def __init__(self, contenedor: ctk.CTkScrollableFrame):
         self._contenedor = contenedor
-        self._apilado = apilado
         self._filas: list[tuple[ctk.CTkFrame, ctk.CTkLabel, ctk.CTkLabel]] = []
         self._mostrado: list[Fila] = []
 
@@ -60,18 +57,14 @@ class _Lista:
 
     def _crear(self, indice: int):
         marco = ctk.CTkFrame(self._contenedor, fg_color="transparent")
-        marco.grid(row=indice, column=0, sticky="ew", pady=3)
+        marco.grid(row=indice, column=0, sticky="ew", pady=3, padx=(0, 16))
         marco.grid_columnconfigure(0, weight=1)
-        principal = ctk.CTkLabel(marco, text="", font=("Segoe UI", 11, "bold"), anchor="w",
+        principal = ctk.CTkLabel(marco, text="", font=("Segoe UI", 12, "bold"), anchor="w",
                                  wraplength=280, justify="left")
         principal.grid(row=0, column=0, sticky="w")
-        secundario = ctk.CTkLabel(marco, text="", font=("Segoe UI", 10, "bold"),
-                                  text_color=GRIS_TEXTO, anchor="e")
-        if self._apilado:
-            secundario.configure(anchor="w")
-            secundario.grid(row=1, column=0, sticky="w")
-        else:
-            secundario.grid(row=0, column=1, sticky="e", padx=(8, 0))
+        secundario = ctk.CTkLabel(marco, text="", font=("Segoe UI", 11, "bold"),
+                                  text_color=TEXTO_SUAVE, anchor="e")
+        secundario.grid(row=0, column=1, sticky="e", padx=(8, 0))
         return marco, principal, secundario
 
 
@@ -93,19 +86,19 @@ class VistaPanel(VistaBase):
         for i in range(6):
             fila_tarjetas.grid_columnconfigure(i, weight=1, uniform="tarjeta")
         for i, (clave, titulo, color) in enumerate([
-            ("equipos", "Equipos", ACENTO),
-            ("en_uso", "En uso", NARANJA),
-            ("fotografos", "Fotógrafos", VIOLETA),
-            ("proyectos", "Proyectos", TURQUESA),
-            ("entregas", "Entregas abiertas", ROJO),
-            ("saldo", "Saldo a cobrar", VERDE),
+            ("equipos", "Equipos", "azul"),
+            ("en_uso", "En uso", "naranja"),
+            ("fotografos", "Fotógrafos", "violeta"),
+            ("proyectos", "Proyectos", "turquesa"),
+            ("entregas", "Entregas abiertas", "rojo"),
+            ("saldo", "Saldo a cobrar", "verde"),
         ]):
-            tarjeta = Tarjeta(fila_tarjetas, titulo, color=color)
+            tarjeta = Tarjeta(fila_tarjetas, titulo, relleno=RELLENOS[color],
+                              compacta=True)
             tarjeta.grid(row=0, column=i, sticky="nsew", padx=(0 if i == 0 else 8, 0))
             self._tarjetas[clave] = tarjeta
 
-        self._service = self._crear_panel(contenedor, "Alertas de service", 0,
-                                          apilado=True)
+        self._service = self._crear_panel(contenedor, "Inventario", 0)
         self._eventos = self._crear_panel(contenedor, "Próximos eventos", 1)
         self._saldos = self._crear_panel(contenedor, "Saldos por cobrar", 2)
 
@@ -114,8 +107,7 @@ class VistaPanel(VistaBase):
         self._estado.grid(row=2, column=0, columnspan=3, sticky="ew", pady=(8, 0))
         self._estado_actual: Optional[str] = None
 
-    def _crear_panel(self, master, titulo: str, columna: int, *,
-                     apilado: bool = False) -> _Lista:
+    def _crear_panel(self, master, titulo: str, columna: int) -> _Lista:
         marco = ctk.CTkFrame(master, corner_radius=10, fg_color=FONDO,
                              border_width=1, border_color=BORDE)
         marco.grid(row=1, column=columna, sticky="nsew", padx=(0, 8), pady=(0, 8))
@@ -127,7 +119,7 @@ class VistaPanel(VistaBase):
         contenido = ctk.CTkScrollableFrame(marco, fg_color="transparent")
         contenido.grid(row=1, column=0, sticky="nsew", padx=8, pady=(0, 12))
         contenido.grid_columnconfigure(0, weight=1)
-        return _Lista(contenido, apilado=apilado)
+        return _Lista(contenido)
 
     def refrescar(self) -> None:
         hoy = date.today()
@@ -135,7 +127,6 @@ class VistaPanel(VistaBase):
         proyectos = self.repos.proyectos.listar()
         saldos = [(p, p.obtener_saldo_pendiente()) for p in proyectos]
         saldo_total = sum(max(saldo, 0) for _p, saldo in saldos)
-        alertas = self.repos.equipos.alertas_service(dias_aviso=30, hoy=hoy)
 
         self._tarjetas["equipos"].set_valor(resumen["equipos"])
         self._tarjetas["en_uso"].set_valor(resumen["en_uso"])
@@ -144,19 +135,17 @@ class VistaPanel(VistaBase):
         self._tarjetas["entregas"].set_valor(resumen["trabajos_abiertos"])
         self._tarjetas["saldo"].set_valor(moneda(saldo_total))
 
-        # -- service -------------------------------------------------------- #
-        filas: list[Fila] = []
-        for equipo, estado in alertas:
-            texto = ("Vencido" if estado == EstadoService.VENCIDO
-                     else f"En {(equipo.fecha_service_proximo - hoy).days} día(s)")
-            responsable = (equipo.fotografo_actual.nombre_completo
-                           if equipo.fotografo_actual else "Sin asignar")
-            filas.append((
-                equipo.nombre,
-                f"{texto} · {fecha_legible(equipo.fecha_service_proximo)} · {responsable}",
-                ROJO if estado == EstadoService.VENCIDO else NARANJA,
-            ))
-        self._service.mostrar(filas or [("Sin alertas de service.", "", VERDE)])
+        # -- inventario ----------------------------------------------------- #
+        # Verde: disponible (en stock). Rojo: no disponible (en uso). A la
+        # derecha, la fecha del próximo service.
+        equipos = sorted(self.repos.equipos.listar(),
+                         key=lambda e: e.estado != EstadoEquipo.EN_STOCK)
+        filas: list[Fila] = [
+            (equipo.descripcion, fecha_legible(equipo.fecha_service_proximo),
+             VERDE if equipo.estado == EstadoEquipo.EN_STOCK else ROJO)
+            for equipo in equipos
+        ]
+        self._service.mostrar(filas or [("Sin equipos cargados.", "", GRIS_TEXTO)])
 
         # -- eventos -------------------------------------------------------- #
         filas = []

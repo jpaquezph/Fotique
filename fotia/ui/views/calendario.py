@@ -10,11 +10,10 @@ import customtkinter as ctk
 from ...domain.models import Evento
 from ..dialogs import DialogoEvento
 from ..theme import (
-    BORDE,
     BOTONES,
     CON_EVENTOS,
     GRIS_TEXTO,
-    RESALTE,
+    NEUTRO_HOVER,
     TEXTO,
     TEXTO_BOTON,
     TEXTO_SUAVE,
@@ -91,7 +90,7 @@ class VistaCalendario(VistaBase):
             celda = ctk.CTkButton(
                 panel_mes, text="", width=54, height=36, corner_radius=8,
                 font=("Segoe UI", 11), fg_color="transparent",
-                hover_color=RESALTE, text_color=TEXTO, anchor="center",
+                hover_color=NEUTRO_HOVER, text_color=TEXTO, anchor="center",
                 command=lambda i=indice: self._seleccionar_celda(i),
             )
             celda.grid(row=fila + 1, column=columna, padx=2, pady=2, sticky="nsew")
@@ -161,20 +160,20 @@ class VistaCalendario(VistaBase):
             tiene = bool(por_dia.get(dia))
             if dia == self._dia:
                 fondo, texto_color, hover = seleccionado, TEXTO_BOTON, seleccionado_hover
-            elif dia == hoy:
-                fondo, texto_color, hover = BORDE, TEXTO, RESALTE
             elif tiene:
-                fondo, texto_color, hover = CON_EVENTOS, TEXTO, RESALTE
+                fondo, texto_color, hover = CON_EVENTOS, TEXTO, NEUTRO_HOVER
             else:
-                fondo, texto_color, hover = "transparent", TEXTO, RESALTE
+                fondo, texto_color, hover = "transparent", TEXTO, NEUTRO_HOVER
             if dia.month != self._mes.month and dia != self._dia:
                 texto_color = TEXTO_TENUE
-            estado = (dia.day, fondo, texto_color, hover, tiene)
+            borde = 2 if dia == hoy and dia != self._dia else 0  # hoy: recuadro
+            estado = (dia.day, fondo, texto_color, hover, tiene, borde)
             # Redibujar un botón es lo caro: al elegir un día solo cambian dos celdas.
             if estado != self._estado_celdas[indice]:
                 self._estado_celdas[indice] = estado
                 celda.configure(text=str(dia.day), fg_color=fondo,
                                 text_color=texto_color, hover_color=hover,
+                                border_width=borde, border_color=seleccionado,
                                 font=("Segoe UI", 11, "bold" if tiene else "normal"))
         self._mostrar_dia()
 

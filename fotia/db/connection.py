@@ -81,6 +81,12 @@ def _preparar_esquema(conn: sqlite3.Connection, destino: str) -> None:
                     respaldo.close()
         _migrar_a_v2(conn)
     conn.executescript(ESQUEMA)
+    # Las categorías del tarifario pasaron a tener lista propia: se completa
+    # con las que ya usan los servicios (no hace nada si ya están).
+    conn.execute(
+        "INSERT OR IGNORE INTO categorias_servicio (nombre) "
+        "SELECT DISTINCT categoria FROM servicios WHERE categoria <> ''"
+    )
     conn.execute(f"PRAGMA user_version = {VERSION_ESQUEMA}")
     conn.commit()
 

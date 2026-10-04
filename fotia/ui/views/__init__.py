@@ -2,6 +2,7 @@
 
 from .base import VistaBase
 from .calendario import VistaCalendario
+from .configuracion import VistaConfiguracion
 from .contratos import VistaContratos
 from .equipos import VistaEquipos
 from .fotografos import VistaFotografos
@@ -14,14 +15,14 @@ from .usuarios import VistaUsuarios
 
 TODAS = [
     VistaPanel,
+    VistaResumen,
     VistaEquipos,
     VistaFotografos,
     VistaProyectos,
     VistaCalendario,
     VistaServicios,
     VistaContratos,
-    VistaRespaldos,
-    VistaResumen,
+    VistaConfiguracion,
     VistaUsuarios,
 ]
 
@@ -29,6 +30,7 @@ __all__ = [
     "TODAS",
     "VistaBase",
     "VistaCalendario",
+    "VistaConfiguracion",
     "VistaContratos",
     "VistaEquipos",
     "VistaFotografos",

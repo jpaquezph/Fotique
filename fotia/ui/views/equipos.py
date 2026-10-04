@@ -90,11 +90,9 @@ class VistaEquipos(VistaBase):
                 continue
             if estado_service == EstadoService.VENCIDO:
                 alertas_vencidas += 1
-            etiqueta_service = {
-                EstadoService.VENCIDO: "vencido",
-                EstadoService.PROXIMO: "proximo",
-                EstadoService.EN_REGLA: "ok",
-            }.get(estado_service, "")
+            # Verde: disponible (en stock). Rojo: no disponible (en uso). El
+            # estado del service se lee en la columna «Alerta».
+            disponible = equipo.estado == EstadoEquipo.EN_STOCK
             filas.append([
                 equipo.numero_serie or "—",
                 equipo.descripcion,
@@ -106,7 +104,7 @@ class VistaEquipos(VistaBase):
                 equipo.notas or "",
             ])
             objetos.append(equipo)
-            etiquetas.append(etiqueta_service)
+            etiquetas.append("ok" if disponible else "vencido")
         self.tabla.actualizar(filas, objetos, etiquetas)
 
         stock = sum(1 for e in equipos if e.estado == EstadoEquipo.EN_STOCK)

@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any, Callable, Optional, Sequence
 
+import tkinter as tk
+
 import customtkinter as ctk
 from tkinter import ttk
 
@@ -27,6 +29,7 @@ from .theme import (
     TEXTO_SUAVE,
     area_de_trabajo,
     colores_etiquetas,
+    colores_tema,
 )
 
 # --------------------------------------------------------------------------- #
@@ -118,7 +121,17 @@ class Tabla(ctk.CTkFrame):
                             style="Fotia.Vertical.TScrollbar")
         hsb = ttk.Scrollbar(self, orient="horizontal", command=self.tree.xview,
                             style="Fotia.Horizontal.TScrollbar")
-        self.tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+        # Las líneas de la grilla se redibujan cada vez que la tabla se desplaza.
+        self._lineas_v: list[tk.Frame] = []
+        self._lineas_h: list[tk.Frame] = []
+        self._trazo_pendiente: Optional[str] = None
+
+        def al_desplazar(barra: ttk.Scrollbar, *posicion: str) -> None:
+            barra.set(*posicion)
+            self._pedir_trazo()
+
+        self.tree.configure(yscrollcommand=lambda *p: al_desplazar(vsb, *p),
+                            xscrollcommand=lambda *p: al_desplazar(hsb, *p))
 
         self.tree.grid(row=0, column=0, sticky="nsew", padx=(6, 0), pady=(6, 0))
         vsb.grid(row=0, column=1, sticky="ns", padx=(0, 6), pady=(6, 0))
@@ -128,6 +141,10 @@ class Tabla(ctk.CTkFrame):
 
         self.tree.bind("<Double-1>", self._al_doble_clic)
         self.tree.bind("<Return>", self._al_doble_clic)
+        self.tree.bind("<Configure>", self._pedir_trazo, add="+")
+        # al arrastrar el borde de un encabezado cambia el ancho de la columna
+        self.tree.bind("<B1-Motion>", self._pedir_trazo, add="+")
+        self.tree.bind("<ButtonRelease-1>", self._pedir_trazo, add="+")
 
     def _colorear_etiquetas(self) -> None:
         for nombre, color in colores_etiquetas().items():
@@ -137,6 +154,56 @@ class Tabla(ctk.CTkFrame):
         super()._set_appearance_mode(mode_string)
         if hasattr(self, "tree"):  # los tags de ttk no siguen el modo solos
             self._colorear_etiquetas()
+            self._pedir_trazo()
+
+    # -- grilla ----------------------------------------------------------- #
+    # ttk.Treeview (Tk 8.6) no dibuja líneas entre celdas: se superponen marcos
+    # de 1 px sobre los bordes de las columnas y de las filas visibles.
+    def _pedir_trazo(self, _evento=None) -> None:
+        if self._trazo_pendiente is None:
+            self._trazo_pendiente = self.after_idle(self._trazar)
+
+    def _linea(self, reserva: list, indice: int, color: str) -> tk.Frame:
+        if indice == len(reserva):
+            reserva.append(tk.Frame(self.tree, bd=0, highlightthickness=0))
+        reserva[indice].configure(bg=color)
+        return reserva[indice]
+
+    def _trazar(self) -> None:
+        self._trazo_pendiente = None
+        if not self.tree.winfo_exists():
+            return
+        color = colores_tema()["borde"]
+        ancho, alto = self.tree.winfo_width(), self.tree.winfo_height()
+
+        anchos = [self.tree.column(c["clave"], "width") for c in self.columnas]
+        x = -round(self.tree.xview()[0] * sum(anchos))
+        usadas = 0
+        for ancho_columna in anchos[:-1]:
+            x += ancho_columna
+            if 0 < x < ancho:
+                self._linea(self._lineas_v, usadas, color).place(
+                    x=x - 1, y=0, width=1, height=alto)
+                usadas += 1
+        for sobrante in self._lineas_v[usadas:]:
+            sobrante.place_forget()
+
+        usadas = 0
+        hijos = self.tree.get_children()
+        if hijos:
+            primero = min(round(self.tree.yview()[0] * len(hijos)), len(hijos) - 1)
+            caja = self.tree.bbox(hijos[primero])
+            if caja:
+                y, alto_fila = caja[1], caja[3]
+                for _ in hijos[primero:]:
+                    y += alto_fila
+                    if y >= alto:
+                        break
+                    self._linea(self._lineas_h, usadas, color).place(
+                        x=0, y=y - 1, width=ancho, height=1)
+                    usadas += 1
+        for sobrante in self._lineas_h[usadas:]:
+            sobrante.place_forget()
 
     # -- datos ------------------------------------------------------------ #
     def actualizar(
@@ -157,10 +224,12 @@ class Tabla(ctk.CTkFrame):
         hijos = self.tree.get_children()
         if indice is not None and hijos:
             self.tree.selection_set(hijos[min(indice, len(hijos) - 1)])
+        self._pedir_trazo()
 
     def limpiar(self) -> None:
         self.tree.delete(*self.tree.get_children())
         self._objetos.clear()
+        self._pedir_trazo()
 
     # -- selección -------------------------------------------------------- #
     def id_seleccionado(self) -> Optional[str]:
@@ -228,19 +297,29 @@ class Tarjeta(ctk.CTkFrame):
     """Tarjeta de resumen con número grande y leyenda."""
 
     def __init__(self, master: Any, titulo: str, valor: Any = "0",
-                 *, color: Optional[str] = None):
-        super().__init__(master, corner_radius=10, height=96, fg_color=FONDO,
-                         border_width=2 if color else 1, border_color=color or BORDE)
+                 *, color: Optional[tuple] = None, relleno: Optional[tuple] = None,
+                 compacta: bool = False):
+        """``color`` tiñe borde y texto; ``relleno`` pinta la tarjeta de un color
+        sólido con texto claro. ``compacta`` la hace más baja."""
+        if relleno:
+            color = TEXTO_BOTON
+        super().__init__(master, corner_radius=10, height=64 if compacta else 96,
+                         fg_color=relleno or FONDO,
+                         border_width=0 if relleno else 2 if color else 1,
+                         border_color=color or BORDE)
         self.grid_propagate(False)
+        self.pack_propagate(False)
         self._color = color or TEXTO
         self._actual = (str(valor), self._color)
-        self._titulo = ctk.CTkLabel(self, text=titulo.upper(),
-                                    font=("Segoe UI", 10, "bold"),
+        self._titulo = ctk.CTkLabel(self, text=titulo.upper(), height=16,
+                                    font=("Segoe UI", 9 if compacta else 10, "bold"),
                                     text_color=color or GRIS_TEXTO, anchor="w")
-        self._valor = ctk.CTkLabel(self, text=str(valor), font=("Segoe UI", 24, "bold"),
+        self._valor = ctk.CTkLabel(self, text=str(valor), height=24,
+                                   font=("Segoe UI", 17 if compacta else 24, "bold"),
                                    text_color=color or TEXTO, anchor="w")
-        self._titulo.pack(fill="x", padx=14, pady=(12, 0))
-        self._valor.pack(fill="x", padx=14, pady=(2, 12))
+        margen = (8, 0) if compacta else (12, 0)
+        self._titulo.pack(fill="x", padx=14, pady=margen)
+        self._valor.pack(fill="x", padx=14, pady=(2, 0))
 
     def set_valor(self, valor: Any, color: Optional[tuple] = None) -> None:
         nuevo = (str(valor), color or self._color)

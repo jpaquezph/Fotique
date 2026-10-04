@@ -8,6 +8,7 @@ from typing import Any, Callable, Iterator, Optional
 import customtkinter as ctk
 from tkinter import Menu
 
+from .. import __version__
 from . import views
 from .acceso import PantallaAcceso
 from .theme import (
@@ -18,7 +19,6 @@ from .theme import (
     FUENTE_SUBTITULO,
     GRIS_TEXTO,
     RESALTE,
-    TEMAS,
     TEXTO,
     TEXTO_BOTON,
     aplicar_estilo_tabla,
@@ -29,18 +29,18 @@ from .widgets import boton_secundario
 
 MENU_NAVEGACION = [
     ("panel", "Panel de control"),
+    ("resumen", "Resumen general"),
     ("equipos", "Inventario de equipos"),
     ("fotografos", "Fotógrafos"),
     ("proyectos", "Clientes y proyectos"),
     ("calendario", "Calendario"),
     ("servicios", "Tarifario"),
     ("contratos", "Contratos"),
-    ("respaldos", "Respaldo y datos"),
-    ("resumen", "Resumen general"),
+    ("configuracion", "Configuración"),
     ("usuarios", "Usuarios"),
 ]
 
-VERSION = "1.2.0"
+VERSION = __version__
 
 
 class _Vistas(Mapping):
@@ -115,6 +115,17 @@ class VentanaPrincipal(ctk.CTk):
             self._acceso = None
         self._construir_principal()
 
+    def pedir_cierre_de_sesion(self) -> None:
+        """Cierre pedido por el usuario: se confirma antes."""
+        from .widgets import DialogoMensaje
+
+        if DialogoMensaje.confirmar(
+            self, "Cerrar sesión",
+            "¿Cerrar la sesión? Habrá que ingresar de nuevo con usuario y contraseña.",
+            texto_si="Cerrar sesión",
+        ):
+            self.cerrar_sesion()
+
     def cerrar_sesion(self) -> None:
         for marco in self._principal:
             marco.destroy()
@@ -164,31 +175,16 @@ class VentanaPrincipal(ctk.CTk):
             fill="x", padx=20, pady=(0, 14))
 
         # El pie se ubica antes que la navegación: si la ventana es baja, lo que
-        # se recorta es el final del menú y no la sesión ni la apariencia.
+        # se recorta es el final del menú y no el cierre de sesión.
         pie = ctk.CTkFrame(lateral, fg_color="transparent")
-        pie.pack(side="bottom", fill="x", padx=14, pady=(8, 12))
+        pie.pack(side="bottom", fill="x", padx=14, pady=(8, 14))
         if usuario is not None:
             self._etiqueta_usuario = ctk.CTkLabel(
                 pie, text=self._texto_usuario(usuario), font=FUENTE_PEQUE,
                 text_color=TEXTO, anchor="w")
-            self._etiqueta_usuario.pack(fill="x")
-            cuenta = ctk.CTkFrame(pie, fg_color="transparent")
-            cuenta.pack(fill="x", pady=(2, 10))
-            boton_secundario(cuenta, "Mi cuenta", self._mi_cuenta, ancho=96,
-                             alto=28).pack(side="left")
-            boton_secundario(cuenta, "Cerrar sesión", self.cerrar_sesion, ancho=106,
-                             alto=28).pack(side="right")
-        apariencia = ctk.CTkFrame(pie, fg_color="transparent")
-        apariencia.pack(fill="x")
-        ctk.CTkLabel(apariencia, text="Apariencia", font=FUENTE_PEQUE,
-                     text_color=GRIS_TEXTO, anchor="w").pack(side="left")
-        self._tema = ctk.StringVar(value=self.app.tema)
-        ctk.CTkOptionMenu(
-            apariencia, values=list(TEMAS), variable=self._tema, width=124, height=26,
-            font=FUENTE_PEQUE, dynamic_resizing=False, command=self._cambiar_tema,
-        ).pack(side="right")
-        ctk.CTkLabel(pie, text=f"Fotia {VERSION}", font=("Segoe UI", 9),
-                     text_color=GRIS_TEXTO, anchor="w").pack(fill="x", pady=(4, 0))
+            self._etiqueta_usuario.pack(fill="x", pady=(0, 4))
+            boton_secundario(pie, "Cerrar sesión", self.pedir_cierre_de_sesion,
+                             ancho=212, alto=30).pack(fill="x")
 
         for clave, texto in MENU_NAVEGACION:
             if clave not in permitidas:
@@ -286,11 +282,14 @@ class VentanaPrincipal(ctk.CTk):
 
         archivo = Menu(menu, tearoff=0)
         archivo.add_command(label="Crear respaldo…",
-                            command=lambda: self.mostrar("respaldos"))
+                            command=lambda: self.mostrar_configuracion(
+                                "Respaldo de datos"))
         if self.app.usuario is not None:
             archivo.add_separator()
-            archivo.add_command(label="Mi cuenta…", command=self._mi_cuenta)
-            archivo.add_command(label="Cerrar sesión", command=self.cerrar_sesion)
+            archivo.add_command(label="Mi cuenta…",
+                                command=lambda: self.mostrar_configuracion("General"))
+            archivo.add_command(label="Cerrar sesión",
+                                command=self.pedir_cierre_de_sesion)
             archivo.add_separator()
         archivo.add_command(label="Salir", command=self._salir)
         menu.add_cascade(label="Archivo", menu=archivo)
@@ -306,11 +305,15 @@ class VentanaPrincipal(ctk.CTk):
         aplicar_estilo_tabla(self)
         super()._set_appearance_mode(mode_string)
 
-    def _cambiar_tema(self, modo: str) -> None:
+    def mostrar_configuracion(self, seccion: str) -> None:
+        self.mostrar("configuracion")
+        self.vistas["configuracion"].mostrar_seccion(seccion)
+
+    def cambiar_tema(self, modo: str) -> None:
         configurar_apariencia(modo)
         self.app.guardar_tema(modo)
 
-    def _mi_cuenta(self) -> None:
+    def mi_cuenta(self) -> None:
         from .dialogs import (
             DialogoCambiarPassword,
             DialogoMiCuenta,

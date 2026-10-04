@@ -124,6 +124,10 @@ CREATE TABLE IF NOT EXISTS servicios (
     notas     TEXT NOT NULL DEFAULT ''
 );
 
+CREATE TABLE IF NOT EXISTS categorias_servicio (
+    nombre TEXT PRIMARY KEY COLLATE NOCASE
+);
+
 -- --------------------------------------------------------------------------- #
 -- Entregas y calendario
 -- --------------------------------------------------------------------------- #
