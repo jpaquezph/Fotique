@@ -11,7 +11,6 @@ from ..domain.models import RolUsuario, Usuario
 from .theme import (
     ACENTO,
     BORDE,
-    CHISPA,
     FONDO,
     FUENTE_NORMAL,
     FUENTE_PEQUE,
@@ -22,6 +21,7 @@ from .theme import (
     ROJO,
     TEXTO,
 )
+from .logo import Logo
 from .widgets import boton, boton_secundario
 
 OCULTO = "•"
@@ -63,12 +63,7 @@ class PantallaAcceso(ctk.CTkFrame):
             hijo.destroy()
         self._campos = {}
         self._aceptar = None
-        logo = ctk.CTkFrame(self._tarjeta, fg_color="transparent")
-        logo.pack(padx=40, pady=(20, 0))
-        ctk.CTkLabel(logo, text="fotia", font=("Segoe UI", 28, "bold"),
-                     text_color=TEXTO).pack(side="left")
-        ctk.CTkLabel(logo, text=".", font=("Segoe UI", 28, "bold"),
-                     text_color=CHISPA).pack(side="left")
+        Logo(self._tarjeta, FONDO).pack(padx=40, pady=(22, 0))
         ctk.CTkLabel(self._tarjeta, text=titulo, font=FUENTE_SUBTITULO,
                      text_color=TEXTO).pack(padx=40, pady=(8, 0))
         ctk.CTkLabel(self._tarjeta, text=subtitulo, font=FUENTE_PEQUE,

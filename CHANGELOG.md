@@ -3,6 +3,18 @@
 Todo lo notable de Fotia se documenta acá.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 
+## [1.4.0] — en desarrollo
+
+### Agregado
+
+- **Logo de Fotia** en la barra lateral y en la pantalla de ingreso (negro en
+  modo claro, blanco en modo oscuro) e **ícono propio** en las ventanas, la
+  barra de tareas y el ejecutable.
+
+### Cambiado
+
+- El texto bajo el logo pasa a «FOTIA · GESTIÓN PROFESIONAL».
+
 ## [1.3.0] — 2026-10-05
 
 ### Agregado

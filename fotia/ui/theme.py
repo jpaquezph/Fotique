@@ -42,7 +42,6 @@ LATERAL: Color = ("#17151e", "#0e0d12")
 LATERAL_HOVER: Color = ("#272432", "#1d1b26")
 LATERAL_TEXTO: Color = ("#dedbea", "#dedbea")
 LATERAL_SUAVE: Color = ("#8d899f", "#8d899f")
-CHISPA: Color = ("#ff7a59", "#ff7a59")       # el punto del logo
 
 # -- acentos para texto (legibles sobre FONDO en ambos modos) ---------------- #
 ACENTO: Color = ("#5b3fd6", "#a594ff")

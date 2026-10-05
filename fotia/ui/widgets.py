@@ -12,6 +12,7 @@ from tkinter import ttk
 
 from ..domain.errors import DatosInvalidosError, FotiaError
 from .fechas import SelectorFecha
+from .logo import aplicar_icono
 from .theme import (
     ACENTO,
     BORDE,
@@ -405,6 +406,7 @@ class Dialogo(ctk.CTkToplevel):
         super().__init__(master)
         self.withdraw()
         self.title(titulo)
+        aplicar_icono(self)
         # Nunca más alto que la pantalla (el formulario tiene barra de
         # desplazamiento) y centrado, para que los botones queden a la vista.
         escala = self._get_window_scaling()
@@ -675,6 +677,7 @@ class DialogoMensaje(ctk.CTkToplevel):
         super().__init__(master)
         self.withdraw()
         self.title(titulo)
+        aplicar_icono(self)
         self.resizable(False, False)
         self.transient(master)
         self.resultado = False

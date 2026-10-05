@@ -9,8 +9,11 @@ from pathlib import Path
 
 raiz = Path(SPECPATH)
 
-# El esquema SQLite se lee con Path(__file__) y debe viajar junto al paquete.
-datos = [(str(raiz / "fotia" / "db" / "schema.sql"), "fotia/db")]
+# El esquema SQLite y el logo se leen con Path(__file__) y deben viajar junto
+# al paquete.
+recursos = raiz / "fotia" / "ui" / "recursos"
+datos = [(str(raiz / "fotia" / "db" / "schema.sql"), "fotia/db"),
+         (str(recursos), "fotia/ui/recursos")]
 
 analisis = Analysis(
     [str(raiz / "main.py")],
@@ -34,6 +37,7 @@ exe = EXE(
     analisis.datas,
     [],
     name="Fotia",
+    icon=str(recursos / "fotia.ico"),
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

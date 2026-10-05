@@ -11,9 +11,9 @@ from tkinter import Menu
 from .. import __version__
 from . import views
 from .acceso import PantallaAcceso
+from .logo import Logo, aplicar_icono, identificar_aplicacion
 from .theme import (
     BOTONES,
-    CHISPA,
     FUENTE_NORMAL,
     FUENTE_PEQUE,
     FUENTE_SUBTITULO,
@@ -73,9 +73,11 @@ class _Vistas(Mapping):
 class VentanaPrincipal(ctk.CTk):
     def __init__(self, app: Any, *, acceso: bool = False):
         """``acceso=True`` exige iniciar sesión antes de mostrar la aplicación."""
+        identificar_aplicacion()
         super().__init__()
         self.app = app
         self.title("Fotia — Gestión integral de estudio fotográfico")
+        aplicar_icono(self)
         # El tamaño inicial no supera la pantalla: si no, el pie de la barra
         # lateral (sesión y apariencia) queda fuera de la vista.
         escala = self._get_window_scaling()
@@ -179,13 +181,10 @@ class VentanaPrincipal(ctk.CTk):
         lateral = ctk.CTkFrame(self, width=240, corner_radius=0, fg_color=LATERAL)
         lateral.grid(row=0, column=0, sticky="nsew")
         lateral.grid_propagate(False)
-        logo = ctk.CTkFrame(lateral, fg_color="transparent")
-        logo.pack(fill="x", padx=20, pady=(18, 0))
-        ctk.CTkLabel(logo, text="fotia", font=("Segoe UI", 28, "bold"),
-                     text_color=TEXTO_BOTON).pack(side="left")
-        ctk.CTkLabel(logo, text=".", font=("Segoe UI", 28, "bold"),
-                     text_color=CHISPA).pack(side="left")
-        ctk.CTkLabel(lateral, text="ESTUDIO FOTOGRÁFICO", font=("Segoe UI", 8, "bold"),
+        # La barra es oscura en los dos modos: acá el logo va siempre en blanco.
+        Logo(lateral, LATERAL, siempre_blanco=True).pack(
+            anchor="w", padx=20, pady=(18, 4))
+        ctk.CTkLabel(lateral, text="FOTIA · GESTIÓN PROFESIONAL", font=("Segoe UI", 8, "bold"),
                      text_color=LATERAL_SUAVE, anchor="w").pack(
             fill="x", padx=21, pady=(0, 14))
 
