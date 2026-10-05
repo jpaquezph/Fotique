@@ -27,6 +27,7 @@ from ..domain.models import (
 )
 from ..domain.services import generar_texto_contrato
 from ..util import fecha_legible, moneda
+from .fechas import SelectorFecha
 from .theme import FUENTE_NORMAL, FUENTE_SUBTITULO, GRIS_TEXTO
 from .widgets import Dialogo, DialogoMensaje, Tabla, boton, boton_secundario
 
@@ -161,6 +162,119 @@ class DialogoTabla(Dialogo):
         if not filas:
             self.nota("Sin registros.")
         boton(self._pie, "Cerrar", self.cancelar, ancho=120).pack(side="right")
+
+
+class DialogoHistorialEquipos(Dialogo):
+    """Movimientos de todos los equipos, filtrables por equipo, fotógrafo y fecha.
+
+    ``cargar(equipo_id, fotografo_id, desde, hasta)`` devuelve los movimientos;
+    las fechas acotan el día de retiro. ``equipo`` abre el historial ya filtrado.
+    """
+
+    def __init__(self, master: Any, equipos: Sequence[Equipo],
+                 fotografos: Sequence[Fotografo], cargar,
+                 equipo: Optional[Equipo] = None):
+        super().__init__(master, "Historial de movimientos de equipos",
+                         ancho=1100, alto=580)
+        self._cargar = cargar
+        self._equipos = self._opciones("Todos los equipos", equipos, lambda e: e.nombre)
+        self._fotografos = self._opciones("Todos los fotógrafos", fotografos,
+                                          _etiqueta_fotografo)
+        actual = next((texto for texto, e in self._equipos.items()
+                       if e is not None and equipo is not None and e.id == equipo.id),
+                      "Todos los equipos")
+
+        barra = ctk.CTkFrame(self.form, fg_color="transparent")
+        barra.grid(row=self._fila, column=0, columnspan=2, sticky="ew", padx=10,
+                   pady=(4, 0))
+        self._fila += 1
+        self._equipo = ctk.StringVar(value=actual)
+        ctk.CTkOptionMenu(barra, values=list(self._equipos), variable=self._equipo,
+                          width=240, dynamic_resizing=False, font=FUENTE_NORMAL,
+                          command=lambda _v: self._refrescar()).pack(
+            side="left", padx=(0, 8))
+        self._fotografo = ctk.StringVar(value="Todos los fotógrafos")
+        ctk.CTkOptionMenu(barra, values=list(self._fotografos),
+                          variable=self._fotografo, width=200, dynamic_resizing=False,
+                          font=FUENTE_NORMAL,
+                          command=lambda _v: self._refrescar()).pack(
+            side="left", padx=(0, 14))
+        ctk.CTkLabel(barra, text="Desde", font=FUENTE_NORMAL,
+                     text_color=GRIS_TEXTO).pack(side="left", padx=(0, 6))
+        self._desde = SelectorFecha(barra, ancho=150,
+                                    al_cambiar=lambda _f: self._refrescar())
+        self._desde.pack(side="left", padx=(0, 12))
+        ctk.CTkLabel(barra, text="Hasta", font=FUENTE_NORMAL,
+                     text_color=GRIS_TEXTO).pack(side="left", padx=(0, 6))
+        self._hasta = SelectorFecha(barra, ancho=150,
+                                    al_cambiar=lambda _f: self._refrescar())
+        self._hasta.pack(side="left", padx=(0, 12))
+        boton_secundario(barra, "Limpiar", self._limpiar, ancho=80).pack(side="left")
+
+        self.tabla = Tabla(self.form, [
+            {"clave": "equipo", "titulo": "Equipo", "ancho": 200},
+            {"clave": "fotografo", "titulo": "Fotógrafo", "ancho": 140},
+            {"clave": "proyecto", "titulo": "Proyecto", "ancho": 170},
+            {"clave": "retiro", "titulo": "Retiro", "ancho": 95, "anchor": "center"},
+            {"clave": "entrega", "titulo": "Entrega", "ancho": 95, "anchor": "center"},
+            {"clave": "devuelto", "titulo": "Devuelto", "ancho": 95, "anchor": "center"},
+            {"clave": "obs", "titulo": "Observaciones", "ancho": 200},
+        ], altura=11)
+        self.tabla.grid(row=self._fila, column=0, columnspan=2, sticky="nsew",
+                        padx=10, pady=10)
+        self._fila += 1
+        self._resumen = ctk.CTkLabel(self.form, text="", font=FUENTE_NORMAL,
+                                     text_color=GRIS_TEXTO, anchor="w")
+        self._resumen.grid(row=self._fila, column=0, columnspan=2, sticky="w", padx=10)
+        self._fila += 1
+        boton(self._pie, "Cerrar", self.cancelar, ancho=120).pack(side="right")
+        self._refrescar()
+
+    @staticmethod
+    def _opciones(todos: str, objetos: Sequence[Any], etiquetador) -> dict[str, Any]:
+        """``etiqueta ➜ objeto``; la primera opción (``todos``) no filtra."""
+        mapa: dict[str, Any] = {todos: None}
+        for objeto in objetos:
+            base = etiquetador(objeto)
+            texto, n = base, 2
+            while texto in mapa:
+                texto = f"{base} ({n})"
+                n += 1
+            mapa[texto] = objeto
+        return mapa
+
+    def _limpiar(self) -> None:
+        self._equipo.set("Todos los equipos")
+        self._fotografo.set("Todos los fotógrafos")
+        self._desde.set(None)
+        self._hasta.set(None)
+        self._refrescar()
+
+    def _refrescar(self) -> None:
+        if not hasattr(self, "tabla"):  # un filtro avisó antes de armar la tabla
+            return
+        equipo = self._equipos.get(self._equipo.get())
+        fotografo = self._fotografos.get(self._fotografo.get())
+        movimientos = self._cargar(
+            equipo.id if equipo else None, fotografo.id if fotografo else None,
+            self._desde.fecha(), self._hasta.fecha())
+        self.tabla.actualizar(
+            [[
+                f"{r['marca']} {r['modelo']}"
+                + (f" ({r['numero_serie']})" if r["numero_serie"] else ""),
+                f"{r['f_nombre'] or ''} {r['f_apellido'] or ''}".strip() or "—",
+                r["p_titulo"] or "—",
+                fecha_legible(r["fecha_asignacion"]) or "—",
+                fecha_legible(r["fecha_prevista"]) or "—",
+                fecha_legible(r["fecha_devolucion"]) or "En uso",
+                r["observaciones"] or "",
+            ] for r in movimientos],
+            movimientos,
+            ["" if r["fecha_devolucion"] else "vencido" for r in movimientos])
+        en_uso = sum(1 for r in movimientos if not r["fecha_devolucion"])
+        self._resumen.configure(
+            text=f"{len(movimientos)} movimiento(s) · {en_uso} sin devolver"
+            + ("" if movimientos else " · ningún movimiento coincide con los filtros"))
 
 
 class DialogoFichaEquipo(Dialogo):

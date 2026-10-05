@@ -16,6 +16,8 @@ from ..theme import GRIS_TEXTO
 from ..widgets import Tabla, boton, boton_secundario
 from .base import VistaBase
 
+# Color de la fila: abiertos en verde, presupuestos en amarillo, cerrados en rojo.
+_TAG_ESTADO = {"Presupuesto": "presupuesto", "Cerrado": "vencido"}
 
 class VistaProyectos(VistaBase):
     clave = "proyectos"
@@ -39,18 +41,19 @@ class VistaProyectos(VistaBase):
         switch.pack(side="left", padx=(0, 14))
 
         self._botones_proyectos = ctk.CTkFrame(barra, fg_color="transparent")
-        boton(self._botones_proyectos, "Nuevo proyecto", self._nuevo_proyecto).pack(
-            side="left", padx=(0, 6))
-        boton(self._botones_proyectos, "Editar", self._editar_proyecto).pack(
-            side="left", padx=(0, 6))
-        boton(self._botones_proyectos, "Detalles", self._detalles).pack(
-            side="left", padx=(0, 6))
+        # Anchos a medida: con el ancho por defecto la barra no entra en pantalla.
+        boton(self._botones_proyectos, "Nuevo proyecto", self._nuevo_proyecto,
+              ancho=124).pack(side="left", padx=(0, 6))
+        boton(self._botones_proyectos, "Editar", self._editar_proyecto,
+              ancho=76).pack(side="left", padx=(0, 6))
+        boton(self._botones_proyectos, "Detalles", self._detalles,
+              ancho=86).pack(side="left", padx=(0, 6))
         boton(self._botones_proyectos, "Registrar pago", self._registrar_pago,
-              color="exito").pack(side="left", padx=(0, 6))
-        boton(self._botones_proyectos, "Contrato", self._contrato).pack(
-            side="left", padx=(0, 6))
+              color="exito", ancho=122).pack(side="left", padx=(0, 6))
+        boton(self._botones_proyectos, "Contrato", self._contrato,
+              ancho=90).pack(side="left", padx=(0, 6))
         boton(self._botones_proyectos, "Eliminar", self._eliminar_proyecto,
-              color="peligro").pack(side="left", padx=(0, 6))
+              color="peligro", ancho=86).pack(side="left", padx=(0, 6))
 
         self._botones_clientes = ctk.CTkFrame(barra, fg_color="transparent")
         boton(self._botones_clientes, "Nuevo cliente", self._nuevo_cliente).pack(
@@ -60,8 +63,8 @@ class VistaProyectos(VistaBase):
         boton(self._botones_clientes, "Eliminar", self._eliminar_cliente,
               color="peligro").pack(side="left", padx=(0, 6))
 
-        self._busqueda = ctk.CTkEntry(barra, width=250,
-                                      placeholder_text="Buscar proyecto o cliente…")
+        self._busqueda = ctk.CTkEntry(barra, width=170,
+                                      placeholder_text="Buscar…")
         self._busqueda.pack(side="right")
         self._busqueda.bind("<KeyRelease>", self.refrescar_diferido)
 
@@ -152,7 +155,7 @@ class VistaProyectos(VistaBase):
                 moneda(saldo),
             ])
             objetos.append(p)
-            etiquetas.append("ok" if saldo <= 0 else "proximo")
+            etiquetas.append(_TAG_ESTADO.get(str(p.estado), "ok"))
         self.tabla.actualizar(filas, objetos, etiquetas)
         abiertos = [p for p in proyectos if str(p.estado) != "Cerrado"]
         self._pie.configure(

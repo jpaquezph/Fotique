@@ -86,11 +86,11 @@ class VistaPanel(VistaBase):
         for i in range(6):
             fila_tarjetas.grid_columnconfigure(i, weight=1, uniform="tarjeta")
         for i, (clave, titulo, color) in enumerate([
-            ("equipos", "Equipos", "azul"),
-            ("en_uso", "En uso", "naranja"),
-            ("fotografos", "Fotógrafos", "violeta"),
-            ("proyectos", "Proyectos", "turquesa"),
-            ("entregas", "Entregas abiertas", "rojo"),
+            ("equipos", "Equipos", "celeste"),
+            ("en_uso", "En uso", "azul"),
+            ("fotografos", "Fotógrafos", "indigo"),
+            ("proyectos", "Proyectos", "violeta"),
+            ("entregas", "Entregas abiertas", "malva"),
             ("saldo", "Saldo a cobrar", "verde"),
         ]):
             tarjeta = Tarjeta(fila_tarjetas, titulo, relleno=RELLENOS[color],

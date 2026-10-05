@@ -14,7 +14,8 @@ Documento de partida: [`Relevamiento Fotia.md`](Relevamiento%20Fotia.md) (SRS v2
 | `dev` | Misma punta que `main`. |
 | `v1.0` | Tag de la versión 1.0.0, cerrada el 01/10/2026. |
 | `v1.2` | Tag de la versión 1.2.0 (04/10/2026). |
-| `1.2`, `1.3`, … | Una rama por versión, con los cambios de esa versión. `1.3` es la que está en desarrollo. |
+| `v1.3` | Tag de la versión 1.3.0 (05/10/2026). |
+| `1.2`, `1.3`, … | Una rama por versión, con los cambios de esa versión. `1.4` es la que está en desarrollo. |
 
 ---
 

@@ -3,6 +3,38 @@
 Todo lo notable de Fotia se documenta acá.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 
+## [1.3.0] — 2026-10-05
+
+### Agregado
+
+- **Eventos desde el calendario**: doble clic en un día abre «Nuevo evento»
+  con esa fecha ya cargada.
+- **Historial de movimientos de equipos** con filtros por equipo, fotógrafo y
+  rango de fechas de retiro (elegidas del calendario). El doble clic sobre un
+  equipo lo abre ya filtrado por esa unidad.
+- **Cambiar de usuario** desde el pie de la barra lateral: vuelve a la
+  pantalla de ingreso.
+
+### Cambiado
+
+- **Nueva apariencia**: paleta en tinta oscura con acento violeta, barra
+  lateral oscura también en modo claro, logo «fotia.», botones con forma de
+  píldora y tonos suaves (relleno pleno sólo para la acción principal),
+  títulos más grandes y tarjetas y tablas que se despegan del fondo.
+- Tarjetas del panel de control en una gama fría armónica; «Saldo a cobrar»
+  en verde.
+- Tarjetas del resumen general sólidas con texto blanco; «Resultado» pasa a
+  rojo cuando los egresos superan a los ingresos.
+- En clientes y proyectos el color de la fila indica el estado: verde
+  (confirmado o en curso), amarillo (presupuesto) y rojo (cerrado). La barra
+  de acciones entra completa en pantalla.
+- Tarifario agrupado por categoría, con filas más altas y alternadas.
+- Gráficos de torta con bordes suavizados.
+
+### Quitado
+
+- «Historial global» del inventario: lo reemplaza «Historial».
+
 ## [1.2.0] — 2026-10-04
 
 ### Agregado

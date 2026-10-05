@@ -11,11 +11,13 @@ from ..domain.models import RolUsuario, Usuario
 from .theme import (
     ACENTO,
     BORDE,
+    CHISPA,
     FONDO,
     FUENTE_NORMAL,
     FUENTE_PEQUE,
     FUENTE_SUBTITULO,
     GRIS_TEXTO,
+    LATERAL,
     RESALTE,
     ROJO,
     TEXTO,
@@ -29,13 +31,13 @@ class PantallaAcceso(ctk.CTkFrame):
     """Ocupa la ventana hasta que alguien ingresa; avisa con ``al_ingresar(usuario)``."""
 
     def __init__(self, master: Any, app: Any, al_ingresar: Callable[[Usuario], None]):
-        super().__init__(master, fg_color=FONDO, corner_radius=0)
+        super().__init__(master, fg_color=LATERAL, corner_radius=0)
         self.app = app
         self._al_ingresar = al_ingresar
         self._campos: dict[str, ctk.CTkEntry] = {}
         self._aceptar: Optional[Callable[[], None]] = None
 
-        self._tarjeta = ctk.CTkFrame(self, width=420, fg_color=FONDO, corner_radius=12,
+        self._tarjeta = ctk.CTkFrame(self, width=420, fg_color=FONDO, corner_radius=18,
                                      border_width=1, border_color=BORDE)
         self._tarjeta.place(relx=0.5, rely=0.5, anchor="center")
         # Enter en cualquier campo envía el formulario: se enlaza en la ventana.
@@ -61,8 +63,12 @@ class PantallaAcceso(ctk.CTkFrame):
             hijo.destroy()
         self._campos = {}
         self._aceptar = None
-        ctk.CTkLabel(self._tarjeta, text="FOTIA", font=("Segoe UI", 26, "bold"),
-                     text_color=TEXTO).pack(padx=40, pady=(22, 0))
+        logo = ctk.CTkFrame(self._tarjeta, fg_color="transparent")
+        logo.pack(padx=40, pady=(20, 0))
+        ctk.CTkLabel(logo, text="fotia", font=("Segoe UI", 28, "bold"),
+                     text_color=TEXTO).pack(side="left")
+        ctk.CTkLabel(logo, text=".", font=("Segoe UI", 28, "bold"),
+                     text_color=CHISPA).pack(side="left")
         ctk.CTkLabel(self._tarjeta, text=titulo, font=FUENTE_SUBTITULO,
                      text_color=TEXTO).pack(padx=40, pady=(8, 0))
         ctk.CTkLabel(self._tarjeta, text=subtitulo, font=FUENTE_PEQUE,
@@ -97,7 +103,7 @@ class PantallaAcceso(ctk.CTkFrame):
                                      text_color=ROJO, wraplength=340, justify="left",
                                      anchor="w")
         self._mensaje.pack(fill="x", padx=40)
-        boton(self._tarjeta, texto_ok, accion, ancho=340, alto=36).pack(
+        boton(self._tarjeta, texto_ok, accion, ancho=340, alto=36, solido=True).pack(
             padx=40, pady=(6, 8 if enlace else 26))
         if enlace:
             ctk.CTkButton(self._tarjeta, text=enlace[0], command=enlace[1],

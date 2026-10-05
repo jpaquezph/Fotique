@@ -170,6 +170,94 @@ def test_las_fechas_se_eligen_del_calendario(app):
     dialogo.destroy()
 
 
+def test_doble_clic_en_un_dia_del_calendario_agrega_un_evento(app, monkeypatch):
+    from datetime import timedelta
+
+    from fotia.domain.models import Evento
+    from fotia.ui.views import calendario
+
+    class DialogoFalso:
+        def __init__(self, _master, _fotografos, _proyectos, fecha, evento=None):
+            self._fecha = fecha
+
+        def mostrar(self):
+            return Evento(titulo="Reunión con proveedores", fecha=self._fecha)
+
+    monkeypatch.setattr(calendario, "DialogoEvento", DialogoFalso)
+    app.ventana.mostrar("calendario")
+    vista = app.ventana.vistas["calendario"]
+    indice = 17 if vista._inicio_grilla() + timedelta(days=17) != vista._dia else 18
+    dia = vista._inicio_grilla() + timedelta(days=indice)
+
+    vista._nuevo_evento_en_celda(indice)
+    app.ventana.update()
+    assert vista._dia == dia
+    creados = [e for e in app.repos.eventos.listar()
+               if e.titulo == "Reunión con proveedores"]
+    assert [e.fecha for e in creados] == [dia]
+    assert "Reunión con proveedores" in [
+        vista.tabla.tree.item(i, "values")[1] for i in vista.tabla.tree.get_children()]
+    app.repos.eventos.eliminar(creados[0].id)
+    app.ventana.mostrar("panel")
+
+
+def test_historial_de_equipos_filtra_por_equipo_fotografo_y_fecha(app):
+    from fotia.ui.dialogs import DialogoHistorialEquipos
+    from fotia.util import a_fecha
+
+    repos = app.repos
+    todos = repos.equipos.historial()
+    assert todos
+
+    def cargar(equipo_id, fotografo_id, desde, hasta):
+        return repos.equipos.historial(equipo_id=equipo_id, fotografo_id=fotografo_id,
+                                       desde=desde, hasta=hasta)
+
+    def mostrados(dialogo):
+        return len(dialogo.tabla.tree.get_children())
+
+    dialogo = DialogoHistorialEquipos(app.ventana, repos.equipos.listar(),
+                                      repos.fotografos.listar(), cargar)
+    dialogo.update()
+    assert mostrados(dialogo) == len(todos)
+
+    dia = a_fecha(todos[-1]["fecha_asignacion"])
+    dialogo._desde.set(dia)              # elegir en el calendario refresca solo
+    dialogo._hasta.set(dia)
+    assert mostrados(dialogo) == sum(
+        1 for m in todos if a_fecha(m["fecha_asignacion"]) == dia)
+
+    dialogo._limpiar()
+    fotografo = next(f for f in repos.fotografos.listar()
+                     if f.id == todos[0]["fotografo_id"])
+    dialogo._fotografo.set(fotografo.nombre_completo)
+    dialogo._refrescar()
+    assert mostrados(dialogo) == len(repos.equipos.historial(fotografo_id=fotografo.id))
+    dialogo.destroy()
+
+    # doble clic en un equipo: abre ya filtrado por esa unidad
+    equipo = next(e for e in repos.equipos.listar() if e.id == todos[0]["equipo_id"])
+    dialogo = DialogoHistorialEquipos(app.ventana, repos.equipos.listar(),
+                                      repos.fotografos.listar(), cargar, equipo)
+    assert mostrados(dialogo) == len(repos.equipos.historial(equipo_id=equipo.id))
+    dialogo.destroy()
+
+
+def test_tarifario_agrupa_los_servicios_por_categoria(app):
+    from fotia.ui.views.servicios import _agrupar
+
+    servicios = app.repos.servicios.listar()
+    filas, objetos, etiquetas = _agrupar(servicios)
+    categorias = {s.categoria for s in servicios}
+    assert etiquetas.count("grupo") == len(categorias)
+    assert [o for o in objetos if o is not None] == servicios
+    assert all(o is None for o, e in zip(objetos, etiquetas) if e == "grupo")
+
+    vista = app.ventana.vistas["servicios"]
+    vista.refrescar()
+    assert len(vista.tabla.tree.get_children()) == len(servicios) + len(categorias)
+
+
 def test_resumen_general_recorre_sus_secciones(app):
     from fotia.ui.views.resumen import PERIODOS, SECCIONES, rango_periodo
     from datetime import date
@@ -300,7 +388,13 @@ def test_acceso_primer_usuario_ingreso_y_roles(app, monkeypatch):
     app.repos.usuarios.crear(Usuario(usuario="marina"), "marina2026")
     assert "resumen" in ventana.vistas and "Eliminar" in _textos_de_botones(
         ventana.vistas["equipos"])
-    ventana.cerrar_sesion()
+    # «Cambiar de usuario» (pie de la barra lateral) vuelve a la pantalla de ingreso
+    from fotia.ui.widgets import DialogoMensaje
+
+    monkeypatch.setattr(DialogoMensaje, "confirmar", lambda *a, **k: True)
+    assert "Cambiar de usuario" in _textos_de_botones(ventana._principal[0])
+    ventana.pedir_cambio_de_usuario()
+    assert app.usuario is None
     acceso = ventana._acceso
     _completar(acceso, usuario="marina", password="incorrecta1")
     acceso._accion()

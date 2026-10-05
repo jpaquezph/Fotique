@@ -11,7 +11,7 @@ from ..dialogs import (
     DialogoAsignar,
     DialogoDevolver,
     DialogoEquipo,
-    DialogoTabla,
+    DialogoHistorialEquipos,
 )
 from ..theme import GRIS_TEXTO
 from ..widgets import Tabla, boton, boton_secundario
@@ -63,15 +63,12 @@ class VistaEquipos(VistaBase):
             {"clave": "alerta", "titulo": "Alerta", "ancho": 120, "anchor": "center"},
             {"clave": "notas", "titulo": "Notas", "ancho": 240},
         ]
-        self.tabla = Tabla(contenedor, columnas, doble_click=lambda _e: self._historial(),
-                           altura=4)
+        self.tabla = Tabla(contenedor, columnas, doble_click=self._historial, altura=4)
         self.tabla.grid(row=1, column=0, sticky="nsew")
 
         self._pie = ctk.CTkLabel(contenedor, text="", font=("Segoe UI", 11),
                                  text_color=GRIS_TEXTO, anchor="w")
         self._pie.grid(row=2, column=0, sticky="ew", pady=(6, 0))
-
-        self.acciones(("Historial global", self._historial_global))
 
     # -- datos ------------------------------------------------------------- #
     def refrescar(self) -> None:
@@ -169,44 +166,13 @@ class VistaEquipos(VistaBase):
         self.ejecutar(lambda: self.repos.equipos.devolver(
             equipo.id, datos["fecha"], datos["observaciones"]))
 
-    def _historial(self) -> None:
-        equipo = self._seleccion()
-        if equipo is None:
-            return
-        self._mostrar_movimientos(
-            f"Historial de movimientos — {equipo.nombre}",
-            self.repos.equipos.historial(equipo_id=equipo.id))
-
-    def _historial_global(self) -> None:
-        self._mostrar_movimientos("Historial de movimientos de equipos",
-                                  self.repos.equipos.historial())
-
-    def _mostrar_movimientos(self, titulo: str, movimientos) -> None:
-        filas = [
-            [
-                f"{r['marca']} {r['modelo']}"
-                + (f" ({r['numero_serie']})" if r["numero_serie"] else ""),
-                f"{r['f_nombre'] or ''} {r['f_apellido'] or ''}".strip() or "—",
-                r["p_titulo"] or "—",
-                _fecha_o_guion(r["fecha_asignacion"]),
-                _fecha_o_guion(r["fecha_prevista"]),
-                _fecha_o_guion(r["fecha_devolucion"]) if r["fecha_devolucion"] else "En uso",
-                r["observaciones"] or "",
-            ]
-            for r in movimientos
-        ]
-        DialogoTabla(
-            self, titulo,
-            [
-                {"clave": "equipo", "titulo": "Equipo", "ancho": 200},
-                {"clave": "fotografo", "titulo": "Fotógrafo", "ancho": 140},
-                {"clave": "proyecto", "titulo": "Proyecto", "ancho": 170},
-                {"clave": "retiro", "titulo": "Retiro", "ancho": 95, "anchor": "center"},
-                {"clave": "entrega", "titulo": "Entrega", "ancho": 95, "anchor": "center"},
-                {"clave": "devuelto", "titulo": "Devuelto", "ancho": 95, "anchor": "center"},
-                {"clave": "obs", "titulo": "Observaciones", "ancho": 200},
-            ],
-            filas, ancho=1040,
+    def _historial(self, equipo=None) -> None:
+        """Todos los movimientos; con ``equipo`` abre ya filtrado por esa unidad."""
+        DialogoHistorialEquipos(
+            self, self.repos.equipos.listar(), self.repos.fotografos.listar(),
+            lambda equipo_id, fotografo_id, desde, hasta: self.repos.equipos.historial(
+                equipo_id=equipo_id, fotografo_id=fotografo_id, desde=desde, hasta=hasta),
+            equipo,
         ).mostrar()
 
     def _eliminar(self) -> None:

@@ -457,8 +457,10 @@ class EquipoRepo:
         return equipo
 
     def historial(
-        self, equipo_id: Optional[int] = None, fotografo_id: Optional[int] = None
+        self, equipo_id: Optional[int] = None, fotografo_id: Optional[int] = None,
+        desde: Optional[date] = None, hasta: Optional[date] = None,
     ) -> list[dict]:
+        """Movimientos de equipos; ``desde``/``hasta`` acotan la fecha de retiro."""
         sql = (
             "SELECT h.*, e.marca, e.modelo, e.numero_serie, "
             "f.nombre AS f_nombre, f.apellido AS f_apellido, p.titulo AS p_titulo "
@@ -474,6 +476,12 @@ class EquipoRepo:
         if fotografo_id is not None:
             sql += " AND h.fotografo_id = ?"
             params.append(fotografo_id)
+        if desde is not None:
+            sql += " AND h.fecha_asignacion >= ?"
+            params.append(a_texto(desde))
+        if hasta is not None:
+            sql += " AND h.fecha_asignacion <= ?"
+            params.append(a_texto(hasta))
         sql += " ORDER BY h.fecha_asignacion DESC, h.id DESC"
         filas = self.conn.execute(sql, params).fetchall()
         return [dict(r) for r in filas]

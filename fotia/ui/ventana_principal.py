@@ -12,20 +12,20 @@ from .. import __version__
 from . import views
 from .acceso import PantallaAcceso
 from .theme import (
-    BORDE,
     BOTONES,
-    FONDO,
+    CHISPA,
+    FUENTE_NORMAL,
     FUENTE_PEQUE,
     FUENTE_SUBTITULO,
-    GRIS_TEXTO,
-    RESALTE,
-    TEXTO,
+    LATERAL,
+    LATERAL_HOVER,
+    LATERAL_SUAVE,
+    LATERAL_TEXTO,
     TEXTO_BOTON,
     aplicar_estilo_tabla,
     area_de_trabajo,
     configurar_apariencia,
 )
-from .widgets import boton_secundario
 
 MENU_NAVEGACION = [
     ("panel", "Panel de control"),
@@ -126,6 +126,18 @@ class VentanaPrincipal(ctk.CTk):
         ):
             self.cerrar_sesion()
 
+    def pedir_cambio_de_usuario(self) -> None:
+        """Vuelve a la pantalla de ingreso para que entre otra persona."""
+        from .widgets import DialogoMensaje
+
+        if DialogoMensaje.confirmar(
+            self, "Cambiar de usuario",
+            f"Se cerrará la sesión de {self.app.usuario.nombre_visible} y se volverá "
+            "a la pantalla de ingreso.",
+            texto_si="Cambiar de usuario",
+        ):
+            self.cerrar_sesion()
+
     def cerrar_sesion(self) -> None:
         for marco in self._principal:
             marco.destroy()
@@ -164,15 +176,18 @@ class VentanaPrincipal(ctk.CTk):
         permitidas = {c.clave for c in clases}
 
         # -- barra lateral -------------------------------------------------- #
-        lateral = ctk.CTkFrame(self, width=240, corner_radius=0, fg_color=FONDO)
+        lateral = ctk.CTkFrame(self, width=240, corner_radius=0, fg_color=LATERAL)
         lateral.grid(row=0, column=0, sticky="nsew")
         lateral.grid_propagate(False)
-        ctk.CTkLabel(lateral, text="FOTIA", font=("Segoe UI", 26, "bold"),
-                     text_color=TEXTO, anchor="w").pack(
-            fill="x", padx=20, pady=(20, 0))
-        ctk.CTkLabel(lateral, text="Estudio fotográfico", font=FUENTE_PEQUE,
-                     text_color=GRIS_TEXTO, anchor="w").pack(
-            fill="x", padx=20, pady=(0, 14))
+        logo = ctk.CTkFrame(lateral, fg_color="transparent")
+        logo.pack(fill="x", padx=20, pady=(18, 0))
+        ctk.CTkLabel(logo, text="fotia", font=("Segoe UI", 28, "bold"),
+                     text_color=TEXTO_BOTON).pack(side="left")
+        ctk.CTkLabel(logo, text=".", font=("Segoe UI", 28, "bold"),
+                     text_color=CHISPA).pack(side="left")
+        ctk.CTkLabel(lateral, text="ESTUDIO FOTOGRÁFICO", font=("Segoe UI", 8, "bold"),
+                     text_color=LATERAL_SUAVE, anchor="w").pack(
+            fill="x", padx=21, pady=(0, 14))
 
         # El pie se ubica antes que la navegación: si la ventana es baja, lo que
         # se recorta es el final del menú y no el cierre de sesión.
@@ -181,25 +196,26 @@ class VentanaPrincipal(ctk.CTk):
         if usuario is not None:
             self._etiqueta_usuario = ctk.CTkLabel(
                 pie, text=self._texto_usuario(usuario), font=FUENTE_PEQUE,
-                text_color=TEXTO, anchor="w")
+                text_color=LATERAL_TEXTO, anchor="w")
             self._etiqueta_usuario.pack(fill="x", pady=(0, 4))
-            boton_secundario(pie, "Cerrar sesión", self.pedir_cierre_de_sesion,
-                             ancho=212, alto=30).pack(fill="x")
+            ctk.CTkButton(
+                pie, text="Cambiar de usuario", command=self.pedir_cambio_de_usuario,
+                width=212, height=30, fg_color="transparent",
+                hover_color=LATERAL_HOVER, text_color=LATERAL_TEXTO,
+                border_width=1, border_color=LATERAL_HOVER, font=FUENTE_NORMAL,
+            ).pack(fill="x")
 
         for clave, texto in MENU_NAVEGACION:
             if clave not in permitidas:
                 continue
             btn = ctk.CTkButton(
-                lateral, text=texto, anchor="w", height=32, corner_radius=8,
+                lateral, text=texto, anchor="w", height=32, corner_radius=10,
                 font=FUENTE_SUBTITULO, fg_color="transparent",
-                hover_color=RESALTE, text_color=TEXTO,
+                hover_color=LATERAL_HOVER, text_color=LATERAL_TEXTO,
                 command=lambda k=clave: self.mostrar(k),
             )
             btn.pack(fill="x", padx=14, pady=1)
             self._botones[clave] = btn
-
-        divisor = ctk.CTkFrame(lateral, width=1, corner_radius=0, fg_color=BORDE)
-        divisor.place(relx=1.0, rely=0, relheight=1.0, anchor="ne")
 
         # -- contenido ------------------------------------------------------- #
         contenedor = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0)
@@ -236,8 +252,8 @@ class VentanaPrincipal(ctk.CTk):
         relleno, hover = BOTONES["primario"]
         btn.configure(
             fg_color=relleno if activo else "transparent",
-            text_color=TEXTO_BOTON if activo else TEXTO,
-            hover_color=hover if activo else RESALTE,
+            text_color=TEXTO_BOTON if activo else LATERAL_TEXTO,
+            hover_color=hover if activo else LATERAL_HOVER,
         )
 
     def mostrar(self, clave: str) -> None:

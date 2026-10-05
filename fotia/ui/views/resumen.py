@@ -10,7 +10,7 @@ import customtkinter as ctk
 from ...util import fecha_legible, moneda
 from ..dialogs import DialogoEgreso
 from ..graficos import Torta
-from ..theme import ACENTO, GRIS_TEXTO, NARANJA, ROJO, VERDE
+from ..theme import GRIS_TEXTO, RELLENOS
 from ..widgets import Tabla, Tarjeta, boton, boton_secundario
 from .base import VistaBase
 
@@ -84,11 +84,11 @@ class VistaResumen(VistaBase):
         tarjetas.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 8))
         self._tarjetas: dict[str, Tarjeta] = {}
         for i, (clave, titulo, color) in enumerate([
-            ("ingresos", "Ingresos", VERDE), ("egresos", "Egresos", ROJO),
-            ("resultado", "Resultado", ACENTO), ("saldo", "Saldo a cobrar", NARANJA),
+            ("ingresos", "Ingresos", "verde"), ("egresos", "Egresos", "rojo"),
+            ("resultado", "Resultado", "indigo"), ("saldo", "Saldo a cobrar", "celeste"),
         ]):
             tarjetas.grid_columnconfigure(i, weight=1, uniform="tarjeta")
-            tarjeta = Tarjeta(tarjetas, titulo, color=color)
+            tarjeta = Tarjeta(tarjetas, titulo, relleno=RELLENOS[color])
             tarjeta.configure(height=78)
             tarjeta.grid(row=0, column=i, sticky="nsew", padx=(0 if i == 0 else 8, 0))
             self._tarjetas[clave] = tarjeta
@@ -102,7 +102,8 @@ class VistaResumen(VistaBase):
         self._clase = ctk.StringVar(value="Todos")
         ctk.CTkSegmentedButton(acciones, values=["Todos", "Ingresos", "Egresos"],
                                variable=self._clase,
-                               command=lambda _v: self.refrescar()).pack(side="right")
+                               command=lambda _v: self.refrescar()).pack(
+            side="right", padx=(0, 16))
 
         self.tabla_movimientos = Tabla(panel, [
             {"clave": "fecha", "titulo": "Fecha", "ancho": 90, "anchor": "center"},
@@ -237,8 +238,9 @@ class VistaResumen(VistaBase):
         egresos = sum(m["monto"] for m in movimientos if m["clase"] == "Egreso")
         self._tarjetas["ingresos"].set_valor(moneda(ingresos))
         self._tarjetas["egresos"].set_valor(moneda(egresos))
-        self._tarjetas["resultado"].set_valor(
-            moneda(ingresos - egresos), color=ROJO if egresos > ingresos else ACENTO)
+        self._tarjetas["resultado"].set_valor(moneda(ingresos - egresos))
+        self._tarjetas["resultado"].set_relleno(
+            RELLENOS["rojo" if egresos > ingresos else "indigo"])
         self._tarjetas["saldo"].set_valor(moneda(self.repos.informes.saldo_por_cobrar()))
 
         clase = {"Ingresos": "Ingreso", "Egresos": "Egreso"}.get(self._clase.get())

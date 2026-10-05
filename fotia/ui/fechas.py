@@ -210,9 +210,12 @@ class SelectorFecha(ctk.CTkFrame):
     """Campo de fecha: muestra ``dd/mm/aaaa`` y se elige desde el calendario."""
 
     def __init__(self, master: Any, valor: Optional[date] = None, *,
-                 opcional: bool = True, ancho: int = 160):
+                 opcional: bool = True, ancho: int = 160,
+                 al_cambiar: Optional[Callable[[Optional[date]], Any]] = None):
+        """``al_cambiar(fecha)`` avisa cada vez que se elige o se borra la fecha."""
         super().__init__(master, fg_color="transparent")
         self._opcional = opcional
+        self._al_cambiar = None  # recién después de cargar el valor inicial
         self._calendario: Optional[Calendario] = None
         self._entrada = ctk.CTkEntry(self, width=ancho - 40, font=FUENTE_NORMAL,
                                      placeholder_text="Sin fecha")
@@ -226,6 +229,7 @@ class SelectorFecha(ctk.CTkFrame):
         # Sólo se elige del calendario: se descarta lo que se intente tipear.
         self._entrada.bind("<Key>", self._al_teclear)
         self.set(valor)
+        self._al_cambiar = al_cambiar
 
     def _al_teclear(self, evento: tk.Event) -> Optional[str]:
         if evento.keysym in ("Tab", "ISO_Left_Tab", "Escape", "Return"):
@@ -255,6 +259,8 @@ class SelectorFecha(ctk.CTkFrame):
             self._entrada.insert(0, fecha_legible(valor))
         else:  # CTkEntry sólo repone el texto de ayuda al perder el foco
             self._entrada._activate_placeholder()
+        if self._al_cambiar is not None:
+            self._al_cambiar(valor)
 
     def get(self) -> str:
         return self._entrada.get()

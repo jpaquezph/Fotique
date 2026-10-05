@@ -93,6 +93,8 @@ class VistaCalendario(VistaBase):
                 hover_color=NEUTRO_HOVER, text_color=TEXTO, anchor="center",
                 command=lambda i=indice: self._seleccionar_celda(i),
             )
+            celda.bind("<Double-Button-1>",
+                       lambda _e, i=indice: self._nuevo_evento_en_celda(i), add="+")
             celda.grid(row=fila + 1, column=columna, padx=2, pady=2, sticky="nsew")
             self._celdas.append(celda)
 
@@ -200,10 +202,11 @@ class VistaCalendario(VistaBase):
         etiquetas = [_tag_tipo(e.tipo) for e in eventos]
         self.tabla.actualizar(filas, eventos, etiquetas)
         self._pie.configure(
-            text="Los eventos de proyectos, entregas y service se generan solos; "
-            "para editarlos use su módulo correspondiente."
-            if not any(e.id for e in eventos) else
-            "Use «Editar evento» para modificar los eventos de agenda propios."
+            text="Doble clic en un día para agregarle un evento. "
+            + ("Los eventos de proyectos, entregas y service se generan solos; "
+               "para editarlos use su módulo correspondiente."
+               if not any(e.id for e in eventos) else
+               "Use «Editar evento» para modificar los eventos de agenda propios.")
         )
 
     # -- acciones ----------------------------------------------------------- #
@@ -230,6 +233,12 @@ class VistaCalendario(VistaBase):
         if dia.month != self._mes.month:
             self._mes = dia.replace(day=1)
         self.refrescar()
+
+    def _nuevo_evento_en_celda(self, indice: int) -> None:
+        dia = self._inicio_grilla() + timedelta(days=indice)
+        if dia != self._dia:
+            self._seleccionar_celda(indice)
+        self._nuevo_evento()
 
     def _evento_seleccionado(self):
         evento = self.tabla.seleccionado()

@@ -44,15 +44,17 @@ class VistaServicios(VistaBase):
         self._busqueda.pack(side="right")
         self._busqueda.bind("<KeyRelease>", self.refrescar_diferido)
 
+        # Los servicios van agrupados bajo su categoría, en filas altas y
+        # alternadas; sigue siendo un único Treeview, así que carga igual de rápido.
         columnas = [
-            {"clave": "categoria", "titulo": "Categoría", "ancho": 160},
-            {"clave": "nombre", "titulo": "Servicio", "ancho": 300},
-            {"clave": "precio", "titulo": "Precio", "ancho": 140, "anchor": "e"},
-            {"clave": "unidad", "titulo": "Unidad", "ancho": 130},
-            {"clave": "notas", "titulo": "Notas", "ancho": 260},
+            {"clave": "nombre", "titulo": "Servicio", "ancho": 360},
+            {"clave": "unidad", "titulo": "Unidad", "ancho": 140},
+            {"clave": "precio", "titulo": "Precio", "ancho": 150, "anchor": "e"},
+            {"clave": "notas", "titulo": "Notas", "ancho": 320},
         ]
         self.tabla = Tabla(contenedor, columnas, doble_click=lambda _e: self._editar(),
-                           altura=4)
+                           altura=4, estilo="Amplia.Fotia.Treeview",
+                           lineas_verticales=False)
         self.tabla.grid(row=1, column=0, sticky="nsew")
 
         self._pie = ctk.CTkLabel(contenedor, text="", font=("Segoe UI", 11),
@@ -67,17 +69,15 @@ class VistaServicios(VistaBase):
         self._menu.set(actual if actual in categorias else "Todas las categorías")
 
         texto = self._busqueda.get().strip().lower()
-        filas, objetos = [], []
+        objetos = []
         for s in servicios:
             if self._categoria.get() != "Todas las categorías" and \
                     s.categoria != self._categoria.get():
                 continue
             if texto and texto not in f"{s.nombre} {s.categoria}".lower():
                 continue
-            filas.append([s.categoria, s.nombre, moneda(s.precio), s.unidad,
-                          s.notas or ""])
             objetos.append(s)
-        self.tabla.actualizar(filas, objetos)
+        self.tabla.actualizar(*_agrupar(objetos))
         promedio = (sum(s.precio for s in objetos) / len(objetos)) if objetos else 0
         self._pie.configure(
             text=f"{len(objetos)} servicio(s) · precio promedio {moneda(promedio)}"
@@ -119,6 +119,26 @@ class VistaServicios(VistaBase):
                               f"¿Quitar «{servicio.nombre}» del tarifario?"):
             return
         self.ejecutar(lambda: self.repos.servicios.eliminar(servicio.id))
+
+
+def _agrupar(servicios: list[Servicio]) -> tuple[list, list, list]:
+    """``(filas, objetos, etiquetas)`` con una fila de título por categoría.
+
+    Las filas de título no tienen objeto: no se pueden editar ni eliminar.
+    """
+    por_categoria: dict[str, list[Servicio]] = {}
+    for servicio in servicios:
+        por_categoria.setdefault(servicio.categoria or "Sin categoría", []).append(servicio)
+    filas, objetos, etiquetas = [], [], []
+    for categoria, grupo in por_categoria.items():
+        filas.append([f"{categoria.upper()}  ·  {len(grupo)}", "", "", ""])
+        objetos.append(None)
+        etiquetas.append("grupo")
+        for indice, s in enumerate(grupo):
+            filas.append([f"    {s.nombre}", s.unidad, moneda(s.precio), s.notas or ""])
+            objetos.append(s)
+            etiquetas.append("cebra" if indice % 2 else "")
+    return filas, objetos, etiquetas
 
 
 __all__ = ["VistaServicios", "Servicio"]

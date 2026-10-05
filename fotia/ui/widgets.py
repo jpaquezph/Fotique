@@ -17,6 +17,7 @@ from .theme import (
     BORDE,
     BOTONES,
     FONDO,
+    FUENTE_BOTON,
     FUENTE_NORMAL,
     FUENTE_PEQUE,
     FUENTE_SUBTITULO,
@@ -27,9 +28,11 @@ from .theme import (
     TEXTO,
     TEXTO_BOTON,
     TEXTO_SUAVE,
+    TONOS,
     area_de_trabajo,
     colores_etiquetas,
     colores_tema,
+    estilos_filas,
 )
 
 # --------------------------------------------------------------------------- #
@@ -90,12 +93,15 @@ class Tabla(ctk.CTkFrame):
         *,
         doble_click: Optional[Callable[[Any], None]] = None,
         altura: int = 12,
+        estilo: str = "Fotia.Treeview",
+        lineas_verticales: bool = True,
     ):
         super().__init__(master, fg_color=FONDO, border_width=1,
-                         border_color=BORDE, corner_radius=8)
+                         border_color=BORDE, corner_radius=12)
         self.columnas = list(columnas)
         self._objetos: dict[str, Any] = {}
         self._doble_click = doble_click
+        self._lineas_verticales = lineas_verticales
 
         claves = [c["clave"] for c in self.columnas]
         self.tree = ttk.Treeview(
@@ -104,7 +110,7 @@ class Tabla(ctk.CTkFrame):
             show="headings",
             selectmode="browse",
             height=altura,
-            style="Fotia.Treeview",
+            style=estilo,
         )
         for col in self.columnas:
             self.tree.heading(col["clave"], text=col["titulo"])
@@ -149,6 +155,8 @@ class Tabla(ctk.CTkFrame):
     def _colorear_etiquetas(self) -> None:
         for nombre, color in colores_etiquetas().items():
             self.tree.tag_configure(nombre, foreground=color)
+        for nombre, opciones in estilos_filas().items():
+            self.tree.tag_configure(nombre, **opciones)
 
     def _set_appearance_mode(self, mode_string: str) -> None:
         super()._set_appearance_mode(mode_string)
@@ -179,7 +187,7 @@ class Tabla(ctk.CTkFrame):
         anchos = [self.tree.column(c["clave"], "width") for c in self.columnas]
         x = -round(self.tree.xview()[0] * sum(anchos))
         usadas = 0
-        for ancho_columna in anchos[:-1]:
+        for ancho_columna in anchos[:-1] if self._lineas_verticales else ():
             x += ancho_columna
             if 0 < x < ancho:
                 self._linea(self._lineas_v, usadas, color).place(
@@ -218,7 +226,9 @@ class Tabla(ctk.CTkFrame):
         self.tree.delete(*self.tree.get_children())
         self._objetos.clear()
         for i, valores in enumerate(filas):
-            tags = (etiquetas[i],) if etiquetas and i < len(etiquetas) and etiquetas[i] else ()
+            tags = etiquetas[i] if etiquetas and i < len(etiquetas) and etiquetas[i] else ()
+            if isinstance(tags, str):
+                tags = (tags,)
             iid = self.tree.insert("", "end", values=list(valores), tags=tags)
             self._objetos[iid] = objetos[i]
         hijos = self.tree.get_children()
@@ -274,13 +284,21 @@ def boton(
     ancho: int = 118,
     alto: int = 32,
     estado: str = "normal",
+    solido: bool = False,
 ) -> ctk.CTkButton:
-    """Botón de acción; ``color`` es una variante de ``theme.BOTONES``."""
-    relleno, hover = BOTONES[color]
+    """Botón de acción; ``color`` es una variante de ``theme.TONOS``.
+
+    ``solido`` lo rellena con el color pleno: es para la acción principal.
+    """
+    if solido:
+        relleno, hover = BOTONES[color]
+        texto_color = TEXTO_BOTON
+    else:
+        relleno, hover, texto_color = TONOS[color]
     return ctk.CTkButton(
         master, text=texto, command=comando, width=ancho, height=alto,
-        fg_color=relleno, hover_color=hover, text_color=TEXTO_BOTON,
-        font=FUENTE_NORMAL, state=estado,
+        fg_color=relleno, hover_color=hover, text_color=texto_color,
+        font=FUENTE_BOTON, state=estado,
     )
 
 
@@ -289,7 +307,7 @@ def boton_secundario(master: Any, texto: str, comando: Optional[Callable[[], Any
     return ctk.CTkButton(
         master, text=texto, command=comando, width=ancho, height=alto,
         fg_color="transparent", hover_color=RESALTE, text_color=TEXTO,
-        border_width=1, border_color=TEXTO_SUAVE, font=FUENTE_NORMAL,
+        border_width=1, border_color=BORDE, font=FUENTE_NORMAL,
     )
 
 
@@ -303,13 +321,14 @@ class Tarjeta(ctk.CTkFrame):
         sólido con texto claro. ``compacta`` la hace más baja."""
         if relleno:
             color = TEXTO_BOTON
-        super().__init__(master, corner_radius=10, height=64 if compacta else 96,
+        super().__init__(master, corner_radius=14, height=64 if compacta else 96,
                          fg_color=relleno or FONDO,
                          border_width=0 if relleno else 2 if color else 1,
                          border_color=color or BORDE)
         self.grid_propagate(False)
         self.pack_propagate(False)
         self._color = color or TEXTO
+        self._relleno = relleno
         self._actual = (str(valor), self._color)
         self._titulo = ctk.CTkLabel(self, text=titulo.upper(), height=16,
                                     font=("Segoe UI", 9 if compacta else 10, "bold"),
@@ -326,6 +345,12 @@ class Tarjeta(ctk.CTkFrame):
         if nuevo != self._actual:  # redibujar un CTkLabel es caro: solo si cambió
             self._actual = nuevo
             self._valor.configure(text=nuevo[0], text_color=nuevo[1])
+
+    def set_relleno(self, relleno: tuple) -> None:
+        """Cambia el color de una tarjeta sólida (p. ej. resultado en rojo)."""
+        if relleno != self._relleno:
+            self._relleno = relleno
+            self.configure(fg_color=relleno)
 
 
 class BarraBotones(ctk.CTkFrame):
@@ -592,7 +617,7 @@ class Dialogo(ctk.CTkToplevel):
         self._al_aceptar = al_aceptar
         cancelar = boton_secundario(self._pie, "Cancelar", self.cancelar, ancho=110)
         cancelar.pack(side="right", padx=(8, 0))
-        ok = boton(self._pie, texto_ok, self.aceptar, ancho=130)
+        ok = boton(self._pie, texto_ok, self.aceptar, ancho=130, solido=True)
         ok.pack(side="right")
         self.bind("<Escape>", lambda e: self.cancelar())
         self.bind("<Return>", lambda e: self.aceptar())
@@ -670,9 +695,11 @@ class DialogoMensaje(ctk.CTkToplevel):
             boton_secundario(pie, "Cancelar", lambda: self._cerrar(False)).pack(
                 side="right", padx=(8, 0)
             )
-            boton(pie, texto_si, lambda: self._cerrar(True)).pack(side="right")
+            boton(pie, texto_si, lambda: self._cerrar(True), solido=True).pack(
+                side="right")
         else:
-            boton(pie, "Aceptar", lambda: self._cerrar(True)).pack(side="right")
+            boton(pie, "Aceptar", lambda: self._cerrar(True), solido=True).pack(
+                side="right")
         self.bind("<Escape>", lambda e: self._cerrar(False))
 
     def _cerrar(self, valor: bool) -> None:
