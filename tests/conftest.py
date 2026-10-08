@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from fotia.db import BaseDatos
+from fotique.db import BaseDatos
 
 
 @pytest.fixture()

@@ -53,7 +53,7 @@ class VistaServicios(VistaBase):
             {"clave": "notas", "titulo": "Notas", "ancho": 320},
         ]
         self.tabla = Tabla(contenedor, columnas, doble_click=lambda _e: self._editar(),
-                           altura=4, estilo="Amplia.Fotia.Treeview",
+                           altura=4, estilo="Amplia.Fotique.Treeview",
                            lineas_verticales=False)
         self.tabla.grid(row=1, column=0, sticky="nsew")
 

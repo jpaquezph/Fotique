@@ -1,4 +1,4 @@
-"""Datos de ejemplo para la primera carga de Fotia (demo)."""
+"""Datos de ejemplo para la primera carga de Fotique (demo)."""
 
 from __future__ import annotations
 
@@ -45,13 +45,13 @@ def cargar_datos_demo(repos) -> dict[str, int]:
     # -- Módulo B: personal ------------------------------------------------ #
     fotografos = [
         Fotografo(nombre="Jorge", apellido="Páquez", telefono="+54 9 341 555 0101",
-                  email="jorge@fotia.example"),
+                  email="jorge@fotique.example"),
         Fotografo(nombre="Marina", apellido="Roldán", telefono="+54 9 341 555 0102",
-                  email="marina@fotia.example"),
+                  email="marina@fotique.example"),
         Fotografo(nombre="Tomás", apellido="Benítez", telefono="+54 9 341 555 0103",
-                  email="tomas@fotia.example"),
+                  email="tomas@fotique.example"),
         Fotografo(nombre="Lucía", apellido="Ferreyra", telefono="+54 9 341 555 0104",
-                  email="lucia@fotia.example"),
+                  email="lucia@fotique.example"),
     ]
     for fotografo in fotografos:
         repos.fotografos.crear(fotografo)
@@ -238,5 +238,5 @@ def cargar_datos_demo(repos) -> dict[str, int]:
     for evento in eventos:
         repos.eventos.crear(evento)
 
-    repos.set_config("estudio", "Estudio Fotia")
+    repos.set_config("estudio", "Estudio Fotique")
     return repos.resumen()

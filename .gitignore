@@ -5,5 +5,5 @@ __pycache__/
 build/
 dist/
 *.spec.bak
-fotia.db
+fotique.db
 backups/

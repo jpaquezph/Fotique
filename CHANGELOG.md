@@ -1,19 +1,23 @@
 # Changelog
 
-Todo lo notable de Fotia se documenta acá.
+Todo lo notable de Fotique se documenta acá.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 
 ## [1.4.0] — en desarrollo
 
 ### Agregado
 
-- **Logo de Fotia** en la barra lateral y en la pantalla de ingreso (negro en
+- **Logo de Fotique** en la barra lateral y en la pantalla de ingreso (negro en
   modo claro, blanco en modo oscuro) e **ícono propio** en las ventanas, la
   barra de tareas y el ejecutable.
 
 ### Cambiado
 
-- El texto bajo el logo pasa a «FOTIA · GESTIÓN PROFESIONAL».
+- **La aplicación pasa a llamarse Fotique** (antes Fotia): paquete `fotique`,
+  ejecutable `Fotique.exe`, variables `FOTIQUE_DB` y `FOTIQUE_DATA_DIR`. La
+  carpeta de datos anterior (`%APPDATA%\Fotia\fotia.db`) se renombra sola a
+  `%APPDATA%\Fotique\fotique.db` en el primer arranque.
+- El texto bajo el logo pasa a «FOTIQUE · GESTIÓN PROFESIONAL».
 
 ## [1.3.0] — 2026-10-05
 
@@ -30,7 +34,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 ### Cambiado
 
 - **Nueva apariencia**: paleta en tinta oscura con acento violeta, barra
-  lateral oscura también en modo claro, logo «fotia.», botones con forma de
+  lateral oscura también en modo claro, logo «fotique.», botones con forma de
   píldora y tonos suaves (relleno pleno sólo para la acción principal),
   títulos más grandes y tarjetas y tablas que se despegan del fondo.
 - Tarjetas del panel de control en una gama fría armónica; «Saldo a cobrar»
@@ -103,7 +107,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 ### Migración
 
 - Al abrir una base de versiones anteriores se actualiza sola al esquema
-  nuevo; antes se guarda una copia junto a ella (`fotia.db.antes-de-v2`).
+  nuevo; antes se guarda una copia junto a ella (`fotique.db.antes-de-v2`).
 
 ### Corregido
 
@@ -140,7 +144,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 
 ## [1.0.0] — 2026-10-01
 
-Primera versión cerrada, alineada al SRS «Relevamiento Fotia» v2.0.
+Primera versión cerrada, alineada al SRS «Relevamiento Fotique» v2.0.
 
 ### Agregado
 
@@ -174,9 +178,9 @@ Primera versión cerrada, alineada al SRS «Relevamiento Fotia» v2.0.
   - RNF-05 creación y restauración de respaldos con `PRAGMA integrity_check`.
 - Suite de tests: 51 pruebas (`pytest`) en tres niveles: unidad, integración
   SQLite en memoria y GUI; más smoke scripts de ventana y diálogos.
-- Empaquetado con PyInstaller (`fotia.spec` → `dist\Fotia.exe`).
+- Empaquetado con PyInstaller (`fotique.spec` → `dist\Fotique.exe`).
 
 ### Notas de la primera ejecución
 
-- Se crea la base en `%APPDATA%\Fotia\fotia.db` (ver `fotia/util.py`).
+- Se crea la base en `%APPDATA%\Fotique\fotique.db` (ver `fotique/util.py`).
 - Si la base está vacía se cargan datos de ejemplo una única vez.

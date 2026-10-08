@@ -1,4 +1,4 @@
-"""Diálogos (formularios modales) de Fotia."""
+"""Diálogos (formularios modales) de Fotique."""
 
 from __future__ import annotations
 
@@ -696,7 +696,7 @@ class DialogoContrato(Dialogo):
     def __init__(self, master: Any, proyectos: Sequence[Proyecto],
                  plantillas: Sequence[PlantillaContrato],
                  contrato: Optional[Contrato] = None,
-                 estudio: str = "Estudio Fotia"):
+                 estudio: str = "Estudio Fotique"):
         super().__init__(master, "Editar contrato" if contrato else "Nuevo contrato",
                          ancho=760, alto=760)
         c = contrato

@@ -1,4 +1,4 @@
-"""Fotia 1.2: serie opcional, tope de pagos, roles, egresos, informes y migración."""
+"""Fotique 1.2: serie opcional, tope de pagos, roles, egresos, informes y migración."""
 
 from __future__ import annotations
 
@@ -8,11 +8,11 @@ from pathlib import Path
 
 import pytest
 
-from fotia.db import BaseDatos
-from fotia.db.connection import VERSION_ESQUEMA
-from fotia.domain import auth
-from fotia.domain.errors import DatosInvalidosError
-from fotia.domain.models import (
+from fotique.db import BaseDatos
+from fotique.db.connection import VERSION_ESQUEMA
+from fotique.domain import auth
+from fotique.domain.errors import DatosInvalidosError
+from fotique.domain.models import (
     ROLES_TRABAJO,
     TIPOS_PROYECTO,
     Cliente,
@@ -279,8 +279,8 @@ def test_migra_una_base_de_la_version_anterior(tmp_path):
 
 
 def test_categorias_del_tarifario_se_agregan_y_quitan(repos):
-    from fotia.domain.errors import EliminacionRestringidaError
-    from fotia.domain.models import Servicio
+    from fotique.domain.errors import EliminacionRestringidaError
+    from fotique.domain.models import Servicio
 
     servicios = repos.servicios
     assert servicios.categorias() == []

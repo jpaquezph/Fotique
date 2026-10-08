@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import pytest
 
-from fotia.domain import DatosInvalidosError, EliminacionRestringidaError, Fotografo
-from fotia.domain.models import Cliente, EstadoTrabajo, Pago, Proyecto, TrabajoPendiente
-from fotia.domain.services import (
+from fotique.domain import DatosInvalidosError, EliminacionRestringidaError, Fotografo
+from fotique.domain.models import Cliente, EstadoTrabajo, Pago, Proyecto, TrabajoPendiente
+from fotique.domain.services import (
     generar_texto_contrato,
     proyectos_con_saldo,
     resumen_financiero,
     validar_eliminacion_fotografo,
 )
-from fotia.util import a_fecha, fecha_legible, moneda
+from fotique.util import a_fecha, fecha_legible, moneda
 from datetime import date
 
 
@@ -74,7 +74,7 @@ def test_no_se_elimina_fotografo_con_entregas_activas():
 
 
 def test_no_se_elimina_fotografo_con_equipos():
-    from fotia.domain.models import Equipo
+    from fotique.domain.models import Equipo
 
     fotografo = Fotografo(nombre="Jorge")
     fotografo.equipos_tomados = [Equipo(numero_serie="SN1", marca="Sony", modelo="A7")]
@@ -95,10 +95,10 @@ def test_generacion_de_contrato_desde_plantilla():
     texto = generar_texto_contrato(
         "{{cliente}} | {{titulo}} | {{fecha_evento}} | {{saldo}} | {{estudio}}",
         proyecto,
-        estudio="Fotia",
+        estudio="Fotique",
     )
 
-    assert texto == "María López | Casamiento López & Paz | 14/11/2026 | $ 1.000.000,00 | Fotia"
+    assert texto == "María López | Casamiento López & Paz | 14/11/2026 | $ 1.000.000,00 | Fotique"
 
 
 def test_utilidades_de_fecha_y_moneda():

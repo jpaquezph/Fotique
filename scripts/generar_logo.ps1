@@ -1,14 +1,14 @@
-# Genera los recursos del logo a partir de scripts\logo_fotia.png:
-#   fotia\ui\recursos\logo_negro_<escala>.png   (modo claro)
-#   fotia\ui\recursos\logo_blanco_<escala>.png  (modo oscuro; el punto no cambia)
-#   fotia\ui\recursos\fotia.ico                 (ventanas y ejecutable)
+# Genera los recursos del logo a partir de scripts\logo_fotique.png:
+#   fotique\ui\recursos\logo_negro_<escala>.png   (modo claro)
+#   fotique\ui\recursos\logo_blanco_<escala>.png  (modo oscuro; el punto no cambia)
+#   fotique\ui\recursos\fotique.ico                 (ventanas y ejecutable)
 #
 # Uso (Windows PowerShell):  .\scripts\generar_logo.ps1
 # No necesita nada instalado: usa System.Drawing de .NET.
 
 $raiz = Split-Path -Parent $PSScriptRoot
-$origen = Join-Path $PSScriptRoot "logo_fotia.png"
-$destino = Join-Path $raiz "fotia\ui\recursos"
+$origen = Join-Path $PSScriptRoot "logo_fotique.png"
+$destino = Join-Path $raiz "fotique\ui\recursos"
 New-Item -ItemType Directory -Force $destino | Out-Null
 
 Add-Type -ReferencedAssemblies System.Drawing -TypeDefinition @'
@@ -20,7 +20,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
 
-public static class LogoFotia
+public static class LogoFotique
 {
     // Alto del logo en píxeles lógicos; se genera una imagen por escala de pantalla.
     const int AltoLogico = 56;
@@ -41,7 +41,7 @@ public static class LogoFotia
                 using (Bitmap b = Escalar(blanco, alto))
                     b.Save(Path.Combine(destino, "logo_blanco_" + escala + ".png"), ImageFormat.Png);
             }
-            GuardarIcono(blanco, Path.Combine(destino, "fotia.ico"));
+            GuardarIcono(blanco, Path.Combine(destino, "fotique.ico"));
         }
     }
 
@@ -204,5 +204,5 @@ public static class LogoFotia
 }
 '@
 
-[LogoFotia]::Generar($origen, $destino)
+[LogoFotique]::Generar($origen, $destino)
 Get-ChildItem $destino | Select-Object Name, Length

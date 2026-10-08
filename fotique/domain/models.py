@@ -1,4 +1,4 @@
-"""Modelos de dominio de Fotia.
+"""Modelos de dominio de Fotique.
 
 Puros dataclasses: sin SQLite y sin Qt. Toda la regla de negocio que puede
 expresarse sobre un objeto vive aquí para poder testearla con ``pytest``.

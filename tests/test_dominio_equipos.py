@@ -6,7 +6,7 @@ from datetime import date, timedelta
 
 import pytest
 
-from fotia.domain import (
+from fotique.domain import (
     AsignacionInvalidaError,
     DatosInvalidosError,
     Equipo,
@@ -17,7 +17,7 @@ from fotia.domain import (
     Fotografo,
     EstadoInvalidoError,
 )
-from fotia.domain.services import equipos_en_alerta
+from fotique.domain.services import equipos_en_alerta
 
 
 def test_asignar_equipo_a_fotografo_exitoso():
@@ -117,7 +117,7 @@ def test_alertas_de_service_vencido_y_proximo():
 def test_trabajos_activos_del_fotografo():
     fotografo = Fotografo(nombre="Tomás")
     fotografo.trabajos = []
-    from fotia.domain.models import TrabajoPendiente
+    from fotique.domain.models import TrabajoPendiente
 
     fotografo.trabajos = [
         TrabajoPendiente(titulo="Edición", fotografo_id=1),

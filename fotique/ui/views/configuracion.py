@@ -80,7 +80,7 @@ class VistaConfiguracion(VistaBase):
                      wraplength=260, justify="left").pack(fill="x", padx=16, pady=(0, 16))
 
         version = self._tarjeta(panel, 2, "Versión")
-        self._dato(version, "Fotia").configure(text=__version__)
+        self._dato(version, "Fotique").configure(text=__version__)
         self._dato(version, "Base de datos").configure(text=str(self.app.ruta_db))
         boton_secundario(version, "Ir al respaldo de datos",
                          lambda: self.mostrar_seccion("Respaldo de datos"),

@@ -10,7 +10,7 @@ import tkinter as tk
 import customtkinter as ctk
 from tkinter import ttk
 
-from ..domain.errors import DatosInvalidosError, FotiaError
+from ..domain.errors import DatosInvalidosError, FotiqueError
 from .fechas import SelectorFecha
 from .logo import aplicar_icono
 from .theme import (
@@ -94,7 +94,7 @@ class Tabla(ctk.CTkFrame):
         *,
         doble_click: Optional[Callable[[Any], None]] = None,
         altura: int = 12,
-        estilo: str = "Fotia.Treeview",
+        estilo: str = "Fotique.Treeview",
         lineas_verticales: bool = True,
     ):
         super().__init__(master, fg_color=FONDO, border_width=1,
@@ -125,9 +125,9 @@ class Tabla(ctk.CTkFrame):
         self._colorear_etiquetas()
 
         vsb = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview,
-                            style="Fotia.Vertical.TScrollbar")
+                            style="Fotique.Vertical.TScrollbar")
         hsb = ttk.Scrollbar(self, orient="horizontal", command=self.tree.xview,
-                            style="Fotia.Horizontal.TScrollbar")
+                            style="Fotique.Horizontal.TScrollbar")
         # Las líneas de la grilla se redibujan cada vez que la tabla se desplaza.
         self._lineas_v: list[tk.Frame] = []
         self._lineas_h: list[tk.Frame] = []
@@ -658,7 +658,7 @@ def ejecutar_protegido(
     """Ejecuta una operación de negocio mostrando errores como diálogo."""
     try:
         resultado = accion()
-    except FotiaError as exc:
+    except FotiqueError as exc:
         DialogoMensaje.error(parent, "Operación no válida", str(exc))
         return None
     except Exception as exc:  # noqa: BLE001 - último recurso para el usuario

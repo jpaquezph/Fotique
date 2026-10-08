@@ -1,8 +1,8 @@
 # -*- mode: python ; coding: utf-8 -*-
-"""Spec de PyInstaller para Fotia (Windows, ejecutable de un solo archivo).
+"""Spec de PyInstaller para Fotique (Windows, ejecutable de un solo archivo).
 
 Uso:
-    pyinstaller --noconfirm --clean fotia.spec
+    pyinstaller --noconfirm --clean fotique.spec
 """
 
 from pathlib import Path
@@ -11,9 +11,9 @@ raiz = Path(SPECPATH)
 
 # El esquema SQLite y el logo se leen con Path(__file__) y deben viajar junto
 # al paquete.
-recursos = raiz / "fotia" / "ui" / "recursos"
-datos = [(str(raiz / "fotia" / "db" / "schema.sql"), "fotia/db"),
-         (str(recursos), "fotia/ui/recursos")]
+recursos = raiz / "fotique" / "ui" / "recursos"
+datos = [(str(raiz / "fotique" / "db" / "schema.sql"), "fotique/db"),
+         (str(recursos), "fotique/ui/recursos")]
 
 analisis = Analysis(
     [str(raiz / "main.py")],
@@ -36,8 +36,8 @@ exe = EXE(
     analisis.binaries,
     analisis.datas,
     [],
-    name="Fotia",
-    icon=str(recursos / "fotia.ico"),
+    name="Fotique",
+    icon=str(recursos / "fotique.ico"),
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

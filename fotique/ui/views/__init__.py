@@ -1,4 +1,4 @@
-"""Vistas (pantallas) de Fotia."""
+"""Vistas (pantallas) de Fotique."""
 
 from .base import VistaBase
 from .calendario import VistaCalendario

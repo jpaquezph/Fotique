@@ -1,4 +1,4 @@
-"""Logo de Fotia dentro de la interfaz e ícono de las ventanas.
+"""Logo de Fotique dentro de la interfaz e ícono de las ventanas.
 
 Las imágenes salen de ``scripts/generar_logo.ps1``: el logo en negro (modo
 claro) y en blanco (modo oscuro), una por cada escala de pantalla, y el
@@ -17,12 +17,12 @@ import customtkinter as ctk
 from .theme import Color, elegir, modo_oscuro
 
 RECURSOS = Path(__file__).parent / "recursos"
-ICONO = RECURSOS / "fotia.ico"
+ICONO = RECURSOS / "fotique.ico"
 ESCALAS = (100, 125, 150, 175, 200)
 
 
 def aplicar_icono(ventana: tk.Misc) -> None:
-    """Pone el ícono de Fotia en la barra de título (y en la barra de tareas)."""
+    """Pone el ícono de Fotique en la barra de título (y en la barra de tareas)."""
     if sys.platform != "win32" or not ICONO.exists():
         return
     try:
@@ -32,7 +32,7 @@ def aplicar_icono(ventana: tk.Misc) -> None:
 
 
 def identificar_aplicacion() -> None:
-    """Hace que Windows agrupe la ventana como «Fotia» y no como Python.
+    """Hace que Windows agrupe la ventana como «Fotique» y no como Python.
 
     Sin esto la barra de tareas muestra el ícono del intérprete.
     """
@@ -40,7 +40,7 @@ def identificar_aplicacion() -> None:
         import ctypes
 
         try:
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Fotia.App")
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Fotique.App")
         except (AttributeError, OSError):  # pragma: no cover
             pass
 
@@ -75,7 +75,7 @@ class Logo(ctk.CTkFrame):
         blanco = self._siempre_blanco or modo_oscuro()
         imagen = self._imagen("blanco" if blanco else "negro")
         if imagen is None:  # sin recursos: el nombre en texto
-            self._etiqueta.configure(text="fotia", font=("Segoe UI", 20, "bold"),
+            self._etiqueta.configure(text="fotique", font=("Segoe UI", 20, "bold"),
                                      fg="#ffffff" if blanco else "#18161f",
                                      bg=elegir(self._fondo))
         else:

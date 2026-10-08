@@ -9,10 +9,10 @@ tkinter = pytest.importorskip("tkinter")  # noqa: N806
 
 @pytest.fixture(scope="module")
 def app(tmp_path_factory):
-    from fotia.app import Aplicacion
-    from fotia.db import cargar_datos_demo
-    from fotia.ui import VentanaPrincipal
-    from fotia.ui.theme import aplicar_estilo_tabla, configurar_apariencia
+    from fotique.app import Aplicacion
+    from fotique.db import cargar_datos_demo
+    from fotique.ui import VentanaPrincipal
+    from fotique.ui.theme import aplicar_estilo_tabla, configurar_apariencia
 
     configurar_apariencia("Dark")
     aplicar_estilo_tabla()
@@ -27,7 +27,7 @@ def app(tmp_path_factory):
 
 
 def test_todas_las_vistas_se_construyen_y_refrescan(app):
-    from fotia.ui.views import TODAS
+    from fotique.ui.views import TODAS
 
     assert len(app.ventana.vistas) == len(TODAS)
     for clave, vista in app.ventana.vistas.items():
@@ -100,7 +100,7 @@ def test_seleccion_en_tabla(app):
 
 
 def test_dialogo_de_equipo_extrae_los_campos(app):
-    from fotia.ui.dialogs import DialogoEquipo
+    from fotique.ui.dialogs import DialogoEquipo
 
     equipo = app.repos.equipos.listar()[0]
     dialogo = DialogoEquipo(app.ventana, equipo)
@@ -115,8 +115,8 @@ def test_dialogo_de_equipo_extrae_los_campos(app):
 
 
 def test_dialogo_de_pago_valida_monto(app):
-    from fotia.domain.errors import DatosInvalidosError
-    from fotia.ui.dialogs import DialogoPago
+    from fotique.domain.errors import DatosInvalidosError
+    from fotique.ui.dialogs import DialogoPago
 
     proyecto = max(app.repos.proyectos.listar(),
                    key=lambda p: p.obtener_saldo_pendiente())
@@ -139,8 +139,8 @@ def test_dialogo_de_pago_valida_monto(app):
 def test_las_fechas_se_eligen_del_calendario(app):
     from datetime import date
 
-    from fotia.ui.dialogs import DialogoAsignar
-    from fotia.ui.fechas import Calendario, SelectorFecha
+    from fotique.ui.dialogs import DialogoAsignar
+    from fotique.ui.fechas import Calendario, SelectorFecha
 
     equipo = app.repos.equipos.listar()[-1]
     dialogo = DialogoAsignar(app.ventana, equipo, app.repos.fotografos.listar(),
@@ -173,8 +173,8 @@ def test_las_fechas_se_eligen_del_calendario(app):
 def test_doble_clic_en_un_dia_del_calendario_agrega_un_evento(app, monkeypatch):
     from datetime import timedelta
 
-    from fotia.domain.models import Evento
-    from fotia.ui.views import calendario
+    from fotique.domain.models import Evento
+    from fotique.ui.views import calendario
 
     class DialogoFalso:
         def __init__(self, _master, _fotografos, _proyectos, fecha, evento=None):
@@ -202,8 +202,8 @@ def test_doble_clic_en_un_dia_del_calendario_agrega_un_evento(app, monkeypatch):
 
 
 def test_historial_de_equipos_filtra_por_equipo_fotografo_y_fecha(app):
-    from fotia.ui.dialogs import DialogoHistorialEquipos
-    from fotia.util import a_fecha
+    from fotique.ui.dialogs import DialogoHistorialEquipos
+    from fotique.util import a_fecha
 
     repos = app.repos
     todos = repos.equipos.historial()
@@ -244,7 +244,7 @@ def test_historial_de_equipos_filtra_por_equipo_fotografo_y_fecha(app):
 
 
 def test_tarifario_agrupa_los_servicios_por_categoria(app):
-    from fotia.ui.views.servicios import _agrupar
+    from fotique.ui.views.servicios import _agrupar
 
     servicios = app.repos.servicios.listar()
     filas, objetos, etiquetas = _agrupar(servicios)
@@ -259,7 +259,7 @@ def test_tarifario_agrupa_los_servicios_por_categoria(app):
 
 
 def test_resumen_general_recorre_sus_secciones(app):
-    from fotia.ui.views.resumen import PERIODOS, SECCIONES, rango_periodo
+    from fotique.ui.views.resumen import PERIODOS, SECCIONES, rango_periodo
     from datetime import date
 
     vista = app.ventana.vistas["resumen"]
@@ -284,10 +284,10 @@ def test_resumen_general_recorre_sus_secciones(app):
 
 
 def test_selector_de_objetos_devuelve_el_elegido(app):
-    from fotia.ui.dialogs import DialogoEvento, _etiqueta_fotografo
+    from fotique.ui.dialogs import DialogoEvento, _etiqueta_fotografo
 
     fotografos = app.repos.fotografos.listar()
-    from fotia.domain.models import Evento
+    from fotique.domain.models import Evento
     from datetime import date
 
     dialogo = DialogoEvento(app.ventana, fotografos, app.repos.proyectos.listar(),
@@ -300,7 +300,7 @@ def test_selector_de_objetos_devuelve_el_elegido(app):
 
 
 def test_contrato_se_genera_desde_plantilla(app):
-    from fotia.ui.dialogs import DialogoContrato
+    from fotique.ui.dialogs import DialogoContrato
 
     proyecto = app.repos.proyectos.listar()[0]
     plantillas = app.repos.plantillas.listar()
@@ -326,7 +326,7 @@ def test_contrato_se_genera_desde_plantilla(app):
 def test_parsear_fecha_y_monto():
     from datetime import date
 
-    from fotia.ui.widgets import parsear_fecha, parsear_monto
+    from fotique.ui.widgets import parsear_fecha, parsear_monto
 
     assert parsear_fecha("30/09/2026") == date(2026, 9, 30)
     assert parsear_fecha("2026-09-30") == date(2026, 9, 30)
@@ -359,8 +359,8 @@ def _completar(acceso, **valores):
 
 
 def test_acceso_primer_usuario_ingreso_y_roles(app, monkeypatch):
-    from fotia.domain import auth
-    from fotia.domain.models import Usuario
+    from fotique.domain import auth
+    from fotique.domain.models import Usuario
 
     monkeypatch.setattr(auth, "ITERACIONES", 1_000)
     ventana = app.ventana
@@ -370,12 +370,12 @@ def test_acceso_primer_usuario_ingreso_y_roles(app, monkeypatch):
     acceso = ventana._acceso
     assert len(ventana.vistas) == 0
     _completar(acceso, nombre="Jorge Páquez", usuario="jorge",
-               password="fotia2026", repetir="otra2026")
+               password="fotique2026", repetir="otra2026")
     acceso._accion()
     assert "no coinciden" in acceso._mensaje.cget("text")
     assert not app.repos.usuarios.hay_usuarios()
 
-    _completar(acceso, repetir="fotia2026")
+    _completar(acceso, repetir="fotique2026")
     acceso._accion()
     assert app.usuario is None  # antes de entrar se muestra el código de recuperación
     acceso._accion()
@@ -389,7 +389,7 @@ def test_acceso_primer_usuario_ingreso_y_roles(app, monkeypatch):
     assert "resumen" in ventana.vistas and "Eliminar" in _textos_de_botones(
         ventana.vistas["equipos"])
     # «Cambiar de usuario» (pie de la barra lateral) vuelve a la pantalla de ingreso
-    from fotia.ui.widgets import DialogoMensaje
+    from fotique.ui.widgets import DialogoMensaje
 
     monkeypatch.setattr(DialogoMensaje, "confirmar", lambda *a, **k: True)
     assert "Cambiar de usuario" in _textos_de_botones(ventana._principal[0])
@@ -412,7 +412,7 @@ def test_acceso_primer_usuario_ingreso_y_roles(app, monkeypatch):
 
 
 def test_acceso_recupera_la_password_con_el_codigo(app, monkeypatch):
-    from fotia.domain import auth
+    from fotique.domain import auth
 
     monkeypatch.setattr(auth, "ITERACIONES", 1_000)
     ventana = app.ventana

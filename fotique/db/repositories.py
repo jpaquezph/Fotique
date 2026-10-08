@@ -1,8 +1,8 @@
-"""Repositorios de Fotia: CRUD + consultas sobre SQLite.
+"""Repositorios de Fotique: CRUD + consultas sobre SQLite.
 
 Cada repositorio traduce filas ➜ objetos de dominio y viceversa; las reglas de
 negocio (asignaciones, saldos, eliminaciones restringidas) viven en
-``fotia.domain`` y aquí sólo se invocan y persisten.
+``fotique.domain`` y aquí sólo se invocan y persisten.
 """
 
 from __future__ import annotations
@@ -1712,7 +1712,7 @@ class Repositorios:
 
     @property
     def nombre_estudio(self) -> str:
-        return self.config("estudio", "Estudio Fotia")
+        return self.config("estudio", "Estudio Fotique")
 
     # -- estadísticas para el panel de control ----------------------------- #
     def resumen(self) -> dict[str, int]:

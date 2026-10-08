@@ -6,7 +6,7 @@ from datetime import date, timedelta
 
 import pytest
 
-from fotia.domain import (
+from fotique.domain import (
     Cliente,
     DatosInvalidosError,
     EliminacionRestringidaError,
@@ -19,7 +19,7 @@ from fotia.domain import (
     Proyecto,
     TrabajoPendiente,
 )
-from fotia.db import cargar_datos_demo
+from fotique.db import cargar_datos_demo
 
 
 def _alta_base(repos):
@@ -266,7 +266,7 @@ def test_calendario_filtrado_por_fotografo(repos):
 
 def test_servicios_y_contratos(repos):
     _, _, cliente = _alta_base(repos)
-    from fotia.domain.models import Contrato, PlantillaContrato, Servicio
+    from fotique.domain.models import Contrato, PlantillaContrato, Servicio
 
     servicio = repos.servicios.crear(
         Servicio(nombre="Cobertura boda", categoria="Coberturas", precio=100)
@@ -315,9 +315,9 @@ def test_resumen_financiero_de_la_demo(repos):
 
 
 def test_respaldo_y_restauracion(tmp_path):
-    from fotia.db import BaseDatos
+    from fotique.db import BaseDatos
 
-    ruta = tmp_path / "fotia.db"
+    ruta = tmp_path / "fotique.db"
     base = BaseDatos(ruta)
     cargar_datos_demo(base.repos)
     equipos_antes = base.repos.resumen()["equipos"]
@@ -337,13 +337,13 @@ def test_respaldo_y_restauracion(tmp_path):
 
 
 def test_restaurar_archivo_invalido(tmp_path):
-    from fotia.db import BaseDatos
-    from fotia.domain.errors import ErrorBackups
+    from fotique.db import BaseDatos
+    from fotique.domain.errors import ErrorBackups
 
     archivo = tmp_path / "basura.db"
     archivo.write_bytes(b"esto no es una base sqlite")
 
-    base = BaseDatos(tmp_path / "fotia.db")
+    base = BaseDatos(tmp_path / "fotique.db")
     with pytest.raises(ErrorBackups):
         base.restaurar(archivo)
     base.cerrar()

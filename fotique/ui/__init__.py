@@ -1,4 +1,4 @@
-"""Interfaz gráfica de Fotia (CustomTkinter + ttk para tablas)."""
+"""Interfaz gráfica de Fotique (CustomTkinter + ttk para tablas)."""
 
 from .ventana_principal import VentanaPrincipal
 

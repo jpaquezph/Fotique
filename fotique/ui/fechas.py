@@ -94,10 +94,10 @@ class Calendario(tk.Toplevel):
         # Un clic en cualquier otro lugar de la ventana dueña lo cierra. El
         # enlace se instala una vez por ventana y consulta el calendario abierto.
         duena = ancla.winfo_toplevel()
-        if not getattr(duena, "_fotia_cierra_calendario", False):
-            duena._fotia_cierra_calendario = True
+        if not getattr(duena, "_fotique_cierra_calendario", False):
+            duena._fotique_cierra_calendario = True
             duena.bind("<Button-1>", lambda _e, d=duena: _cerrar_abierto(d), add="+")
-        duena._fotia_calendario = self
+        duena._fotique_calendario = self
         self.transient(duena)  # acompaña a su ventana al cambiar de aplicación
         self.lift()
         self.focus_force()
@@ -201,7 +201,7 @@ class Calendario(tk.Toplevel):
 
 
 def _cerrar_abierto(duena: tk.Misc) -> None:
-    calendario = getattr(duena, "_fotia_calendario", None)
+    calendario = getattr(duena, "_fotique_calendario", None)
     if calendario is not None and calendario.winfo_exists():
         calendario.destroy()
 

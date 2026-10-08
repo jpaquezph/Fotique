@@ -6,7 +6,7 @@ from typing import Any, Callable, Optional
 
 import customtkinter as ctk
 
-from ..domain.errors import DatosInvalidosError, FotiaError
+from ..domain.errors import DatosInvalidosError, FotiqueError
 from ..domain.models import RolUsuario, Usuario
 from .theme import (
     ACENTO,
@@ -118,7 +118,7 @@ class PantallaAcceso(ctk.CTkFrame):
         """Ejecuta la acción del formulario y muestra el error de negocio debajo."""
         try:
             accion()
-        except FotiaError as exc:
+        except FotiqueError as exc:
             self._mensaje.configure(text=str(exc))
 
     def _passwords_iguales(self) -> str:

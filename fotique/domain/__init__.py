@@ -8,7 +8,7 @@ from .errors import (
     EliminacionRestringidaError,
     EquipoNoDisponibleException,
     EstadoInvalidoError,
-    FotiaError,
+    FotiqueError,
 )
 from .models import (
     Cliente,
@@ -47,7 +47,7 @@ __all__ = [
     "EstadoService",
     "EstadoTrabajo",
     "Evento",
-    "FotiaError",
+    "FotiqueError",
     "Fotografo",
     "Pago",
     "PlantillaContrato",

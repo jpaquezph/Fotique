@@ -6,16 +6,16 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from fotia.domain import auth
-from fotia.domain.errors import (
+from fotique.domain import auth
+from fotique.domain.errors import (
     CredencialesInvalidasError,
     CuentaBloqueadaError,
     DatosInvalidosError,
     EliminacionRestringidaError,
 )
-from fotia.domain.models import RolUsuario, Usuario
+from fotique.domain.models import RolUsuario, Usuario
 
-CLAVE = "fotia2026"
+CLAVE = "fotique2026"
 
 
 @pytest.fixture(autouse=True)

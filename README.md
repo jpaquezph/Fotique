@@ -1,12 +1,12 @@
-# Fotia
+# Fotique
 
 **Sistema integral de gestión fotográfica** para escritorio: inventario de equipos,
 personal, clientes y proyectos, calendario del estudio, tarifario, contratos y
 respaldos. 100% *offline-first* (SQLite local), sin servidores ni internet.
 
-Documento de partida: [`Relevamiento Fotia.md`](Relevamiento%20Fotia.md) (SRS v2.0).
+Documento de partida: [`Relevamiento Fotique.md`](Relevamiento%20Fotique.md) (SRS v2.0).
 
-**Repositorio:** <https://github.com/jpaquezph/Fotia>
+**Repositorio:** <https://github.com/jpaquezph/Fotique>
 
 | Referencia | Contenido |
 |---|---|
@@ -35,18 +35,18 @@ python -m venv .venv
 Opcional: pasar una ruta de base de datos distinta
 
 ```powershell
-python main.py D:\datos\fotia.db
+python main.py D:\datos\fotique.db
 ```
 
 Si no se indica nada, la base vive en:
 
 | Sistema   | Ruta                                              |
 |-----------|---------------------------------------------------|
-| Windows   | `%APPDATA%\Fotia\fotia.db`                        |
-| macOS     | `~/Library/Application Support/Fotia/fotia.db`    |
-| Linux     | `~/.local/share/fotia/fotia.db`                   |
+| Windows   | `%APPDATA%\Fotique\fotique.db`                        |
+| macOS     | `~/Library/Application Support/Fotique/fotique.db`    |
+| Linux     | `~/.local/share/fotique/fotique.db`                   |
 
-Variables útiles: `FOTIA_DB` (ruta de la base), `FOTIA_DATA_DIR` (carpeta de datos).
+Variables útiles: `FOTIQUE_DB` (ruta de la base), `FOTIQUE_DATA_DIR` (carpeta de datos).
 
 En la **primera ejecución** se carga un conjunto de datos de ejemplo para poder
 recorrer la aplicación; a partir de ahí nunca se vuelve a sembrar solo.
@@ -70,8 +70,8 @@ de alta desde la sección **Usuarios** (sólo visible para administradores).
   su cuenta con una contraseña provisoria.
 
 Las contraseñas y los códigos se guardan sólo como hash (PBKDF2-HMAC-SHA256).
-El inicio de sesión controla el acceso a la aplicación; el archivo `fotia.db`
-no está cifrado, así que quien pueda leerlo desde fuera de Fotia puede ver los
+El inicio de sesión controla el acceso a la aplicación; el archivo `fotique.db`
+no está cifrado, así que quien pueda leerlo desde fuera de Fotique puede ver los
 datos del estudio.
 
 ## Tests (TDD)
@@ -102,11 +102,11 @@ python scripts\smoke_dialogos.py
 ## Generar el ejecutable
 
 ```powershell
-.\.venv\Scripts\python.exe -m PyInstaller --noconfirm --clean fotia.spec
+.\.venv\Scripts\python.exe -m PyInstaller --noconfirm --clean fotique.spec
 ```
 
-`fotia.spec` ya está configurado en modo *onefile*: el resultado es un único
-**`dist\Fotia.exe`** autocontenido (incluye el esquema `schema.sql`). Se puede
+`fotique.spec` ya está configurado en modo *onefile*: el resultado es un único
+**`dist\Fotique.exe`** autocontenido (incluye el esquema `schema.sql`). Se puede
 copiar a cualquier PC con Windows, sin instalar Python.
 
 Si preferís una carpeta con el ejecutable (arranque más rápido y menos
@@ -115,7 +115,7 @@ falsos positivos de antivirus), cambiá el `EXE(...)` final del spec por el modo
 
 ```powershell
 .\.venv\Scripts\python.exe -m PyInstaller --noconfirm --clean --onedir `
-    --name Fotia --add-data "fotia\db\schema.sql;fotia\db" main.py
+    --name Fotique --add-data "fotique\db\schema.sql;fotique\db" main.py
 ```
 
 ---
@@ -124,20 +124,20 @@ falsos positivos de antivirus), cambiá el `EXE(...)` final del spec por el modo
 
 | Módulo | Qué hace | Dónde |
 |---|---|---|
-| Inventario | Ficha de cada equipo, asignación con proyecto y fechas, historial de movimientos, alertas de service | `fotia/ui/views/equipos.py` |
-| Fotógrafos | Personal, equipos tomados, trabajos con rol, historial de entregas | `fotia/ui/views/fotografos.py` |
-| Clientes y proyectos | Tipo de proyecto, seña, cobros con tope en el total, saldo automático | `fotia/ui/views/proyectos.py` |
-| Calendario, tarifario y contratos | Agenda unificada, precios, contratos desde plantillas | `fotia/ui/views/{calendario,servicios,contratos}.py` |
-| Resumen general | Dinero, equipos, personal, clientes y contratos por período, con gráficos | `fotia/ui/views/resumen.py` |
-| Configuración y usuarios | Mi cuenta, apariencia, versión, respaldo y restauración de la base; cuentas y roles | `fotia/ui/views/{configuracion,respaldos,usuarios}.py` |
+| Inventario | Ficha de cada equipo, asignación con proyecto y fechas, historial de movimientos, alertas de service | `fotique/ui/views/equipos.py` |
+| Fotógrafos | Personal, equipos tomados, trabajos con rol, historial de entregas | `fotique/ui/views/fotografos.py` |
+| Clientes y proyectos | Tipo de proyecto, seña, cobros con tope en el total, saldo automático | `fotique/ui/views/proyectos.py` |
+| Calendario, tarifario y contratos | Agenda unificada, precios, contratos desde plantillas | `fotique/ui/views/{calendario,servicios,contratos}.py` |
+| Resumen general | Dinero, equipos, personal, clientes y contratos por período, con gráficos | `fotique/ui/views/resumen.py` |
+| Configuración y usuarios | Mi cuenta, apariencia, versión, respaldo y restauración de la base; cuentas y roles | `fotique/ui/views/{configuracion,respaldos,usuarios}.py` |
 
 ### Estructura
 
 ```
-Fotia/
+Fotique/
 ├── main.py                  # lanzador
-├── fotia.spec               # PyInstaller
-├── fotia/
+├── fotique.spec               # PyInstaller
+├── fotique/
 │   ├── app.py               # composición: base de datos + ventana
 │   ├── util.py              # fechas, moneda, rutas
 │   ├── domain/              # modelos y reglas de negocio (sin Qt ni SQLite)
@@ -165,9 +165,9 @@ Fotia/
 
 ### Convenciones
 
-- **Reglas de negocio** siempre en `fotia/domain` (testeadas sin UI ni BD).
+- **Reglas de negocio** siempre en `fotique/domain` (testeadas sin UI ni BD).
 - **La capa de datos** traduce filas ⇄ objetos; nunca se filtra SQL a la UI.
-- **Errores de negocio** derivan de `FotiaError` y se muestran en un diálogo
+- **Errores de negocio** derivan de `FotiqueError` y se muestran en un diálogo
   (`ejecutar_protegido`).
 - Fechas en ISO (`YYYY-MM-DD`) en la base, `dd/mm/aaaa` en la interfaz.
 - Importes en `REAL`; el formato local (`$ 1.500.000,00`) lo hace `moneda()`.

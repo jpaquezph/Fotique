@@ -13,7 +13,7 @@ from .base import VistaBase
 class VistaUsuarios(VistaBase):
     clave = "usuarios"
     titulo = "Usuarios"
-    descripcion = "Cuentas que pueden ingresar a Fotia, roles y contraseñas"
+    descripcion = "Cuentas que pueden ingresar a Fotique, roles y contraseñas"
     solo_admin = True
 
     def _construir(self) -> None:

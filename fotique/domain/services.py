@@ -1,4 +1,4 @@
-"""Reglas de negocio transversales de Fotia (servicios de dominio)."""
+"""Reglas de negocio transversales de Fotique (servicios de dominio)."""
 
 from __future__ import annotations
 
@@ -151,7 +151,7 @@ def _d(valor: object, vacio: str = "—") -> str:
 
 
 def generar_texto_contrato(
-    plantilla: str, proyecto: Proyecto, estudio: str = "Estudio Fotia", extra: str = ""
+    plantilla: str, proyecto: Proyecto, estudio: str = "Estudio Fotique", extra: str = ""
 ) -> str:
     """Completa una plantilla con los datos del proyecto."""
     from ..util import moneda as _moneda  # import diferido: evita ciclos

@@ -1,7 +1,7 @@
 import os
 import sqlite3
 
-ruta = os.path.join(os.environ["APPDATA"], "Fotia", "fotia.db")
+ruta = os.path.join(os.environ["APPDATA"], "Fotique", "fotique.db")
 conn = sqlite3.connect(ruta)
 tablas = [r[0] for r in conn.execute(
     "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")]

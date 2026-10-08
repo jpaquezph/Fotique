@@ -1,4 +1,4 @@
--- Fotia — Esquema SQLite (offline-first, RNF-02)
+-- Fotique — Esquema SQLite (offline-first, RNF-02)
 -- Idempotente: se ejecuta con IF NOT EXISTS en cada arranque.
 
 PRAGMA foreign_keys = ON;

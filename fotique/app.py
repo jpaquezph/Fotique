@@ -1,4 +1,4 @@
-"""Punto de entrada de la aplicación Fotia."""
+"""Punto de entrada de la aplicación Fotique."""
 
 from __future__ import annotations
 

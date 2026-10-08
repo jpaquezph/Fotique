@@ -95,7 +95,7 @@ _tema_cargado = False
 
 
 def _cargar_tema() -> None:
-    """Parte del tema «blue» y lo ajusta a la paleta de Fotia (una sola vez)."""
+    """Parte del tema «blue» y lo ajusta a la paleta de Fotique (una sola vez)."""
     global _tema_cargado
     if _tema_cargado:
         return
@@ -203,9 +203,9 @@ def aplicar_estilo_tabla(master: Optional[tkinter.Misc] = None) -> None:
     except Exception:  # pragma: no cover - tema inexistente
         pass
     # Sin el borde propio de «clam»: el marco lo dibuja la Tabla, con la paleta.
-    style.layout("Fotia.Treeview", [("Treeview.treearea", {"sticky": "nswe"})])
+    style.layout("Fotique.Treeview", [("Treeview.treearea", {"sticky": "nswe"})])
     style.configure(
-        "Fotia.Treeview",
+        "Fotique.Treeview",
         background=c["fondo"],
         fieldbackground=c["fondo"],
         foreground=c["texto"],
@@ -216,7 +216,7 @@ def aplicar_estilo_tabla(master: Optional[tkinter.Misc] = None) -> None:
         padding=4,
     )
     style.configure(
-        "Fotia.Treeview.Heading",
+        "Fotique.Treeview.Heading",
         background=c["resalte"],
         foreground=c["texto_suave"],
         borderwidth=0,
@@ -225,24 +225,24 @@ def aplicar_estilo_tabla(master: Optional[tkinter.Misc] = None) -> None:
         padding=8,
     )
     style.map(
-        "Fotia.Treeview",
+        "Fotique.Treeview",
         background=[("selected", c["seleccion"])],
         foreground=[("selected", c["texto"])],
     )
     style.map(
-        "Fotia.Treeview.Heading",
+        "Fotique.Treeview.Heading",
         background=[("active", c["borde"])],
     )
-    # Variante de filas altas (tarifario); el resto lo hereda de Fotia.Treeview.
-    style.configure("Amplia.Fotia.Treeview", rowheight=40)
+    # Variante de filas altas (tarifario); el resto lo hereda de Fotique.Treeview.
+    style.configure("Amplia.Fotique.Treeview", rowheight=40)
     for orientacion in ("Vertical", "Horizontal"):
         style.configure(
-            f"Fotia.{orientacion}.TScrollbar",
+            f"Fotique.{orientacion}.TScrollbar",
             background=c["borde"], troughcolor=c["fondo"], bordercolor=c["fondo"],
             lightcolor=c["borde"], darkcolor=c["borde"], arrowcolor=c["texto_suave"],
             relief="flat", borderwidth=0,
         )
-        style.map(f"Fotia.{orientacion}.TScrollbar",
+        style.map(f"Fotique.{orientacion}.TScrollbar",
                   background=[("active", c["texto_suave"])])
 
 

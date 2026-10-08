@@ -1,43 +1,43 @@
-"""Excepciones del dominio Fotia.
+"""Excepciones del dominio Fotique.
 
-Todas derivan de :class:`FotiaError` para que la capa de UI pueda atrapar
+Todas derivan de :class:`FotiqueError` para que la capa de UI pueda atrapar
 cualquier error de negocio con un único ``except``.
 """
 
 from __future__ import annotations
 
 
-class FotiaError(Exception):
-    """Error base de negocio de Fotia."""
+class FotiqueError(Exception):
+    """Error base de negocio de Fotique."""
 
 
-class DatosInvalidosError(FotiaError):
+class DatosInvalidosError(FotiqueError):
     """Datos de entrada incompletos o inválidos (validación de formularios)."""
 
 
-class EquipoNoDisponibleException(FotiaError):
+class EquipoNoDisponibleException(FotiqueError):
     """Se intentó asignar un equipo que ya está ``En uso``."""
 
 
-class AsignacionInvalidaError(FotiaError):
+class AsignacionInvalidaError(FotiqueError):
     """Un equipo ``En uso`` requiere fotógrafo responsable."""
 
 
-class EstadoInvalidoError(FotiaError):
+class EstadoInvalidoError(FotiqueError):
     """Transición de estado no permitida (p. ej. devolver un equipo en stock)."""
 
 
-class EliminacionRestringidaError(FotiaError):
+class EliminacionRestringidaError(FotiqueError):
     """Violación de integridad referencial de alto nivel."""
 
 
-class CredencialesInvalidasError(FotiaError):
+class CredencialesInvalidasError(FotiqueError):
     """Usuario, contraseña o código de recuperación incorrectos."""
 
 
-class CuentaBloqueadaError(FotiaError):
+class CuentaBloqueadaError(FotiqueError):
     """Demasiados intentos fallidos: la cuenta queda bloqueada unos minutos."""
 
 
-class ErrorBackups(FotiaError):
+class ErrorBackups(FotiqueError):
     """Falló la exportación/importación de la base de datos."""

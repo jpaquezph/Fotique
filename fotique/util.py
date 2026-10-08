@@ -8,7 +8,9 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Optional, Union
 
-APP_NAME = "Fotia"
+APP_NAME = "Fotique"
+# Nombre anterior de la aplicación: su carpeta de datos se adopta al arrancar.
+_NOMBRE_ANTERIOR = "Fotia"
 
 __all__ = [
     "APP_NAME",
@@ -75,25 +77,40 @@ def es_frozen() -> bool:
     return getattr(sys, "frozen", False)
 
 
+def _adoptar_datos_anteriores(base: Path) -> None:
+    """Trae la carpeta de datos de cuando la aplicación se llamaba Fotia."""
+    anterior = base.with_name(
+        _NOMBRE_ANTERIOR.lower() if base.name.islower() else _NOMBRE_ANTERIOR
+    )
+    if base.exists() or not anterior.is_dir():
+        return
+    anterior.rename(base)
+    prefijo = f"{_NOMBRE_ANTERIOR.lower()}.db"
+    for archivo in base.glob(f"{prefijo}*"):
+        archivo.rename(base / f"{APP_NAME.lower()}.db{archivo.name[len(prefijo):]}")
+
+
 def dir_datos() -> Path:
     """Carpeta de datos de la aplicación (base de datos y respaldos)."""
-    if override := os.environ.get("FOTIA_DATA_DIR"):
+    if override := os.environ.get("FOTIQUE_DATA_DIR"):
         base = Path(override)
-    elif sys.platform == "win32":
-        base = Path(os.environ.get("APPDATA", Path.home())) / APP_NAME
-    elif sys.platform == "darwin":
-        base = Path.home() / "Library" / "Application Support" / APP_NAME
     else:
-        base = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")) / APP_NAME.lower()
+        if sys.platform == "win32":
+            base = Path(os.environ.get("APPDATA", Path.home())) / APP_NAME
+        elif sys.platform == "darwin":
+            base = Path.home() / "Library" / "Application Support" / APP_NAME
+        else:
+            base = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")) / APP_NAME.lower()
+        _adoptar_datos_anteriores(base)
     base.mkdir(parents=True, exist_ok=True)
     return base
 
 
 def ruta_base_datos() -> Path:
-    """Ruta de la base SQLite (sobrescribible con ``FOTIA_DB``)."""
-    if override := os.environ.get("FOTIA_DB"):
+    """Ruta de la base SQLite (sobrescribible con ``FOTIQUE_DB``)."""
+    if override := os.environ.get("FOTIQUE_DB"):
         return Path(override)
-    return dir_datos() / "fotia.db"
+    return dir_datos() / "fotique.db"
 
 
 def dir_respaldos() -> Path:

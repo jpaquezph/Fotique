@@ -1,4 +1,4 @@
-"""Ventana principal de Fotia: acceso, navegación lateral, menús y apariencia."""
+"""Ventana principal de Fotique: acceso, navegación lateral, menús y apariencia."""
 
 from __future__ import annotations
 
@@ -76,7 +76,7 @@ class VentanaPrincipal(ctk.CTk):
         identificar_aplicacion()
         super().__init__()
         self.app = app
-        self.title("Fotia — Gestión integral de estudio fotográfico")
+        self.title("Fotique — Gestión integral de estudio fotográfico")
         aplicar_icono(self)
         # El tamaño inicial no supera la pantalla: si no, el pie de la barra
         # lateral (sesión y apariencia) queda fuera de la vista.
@@ -184,7 +184,7 @@ class VentanaPrincipal(ctk.CTk):
         # La barra es oscura en los dos modos: acá el logo va siempre en blanco.
         Logo(lateral, LATERAL, siempre_blanco=True).pack(
             anchor="w", padx=20, pady=(18, 4))
-        ctk.CTkLabel(lateral, text="FOTIA · GESTIÓN PROFESIONAL", font=("Segoe UI", 8, "bold"),
+        ctk.CTkLabel(lateral, text="FOTIQUE · GESTIÓN PROFESIONAL", font=("Segoe UI", 8, "bold"),
                      text_color=LATERAL_SUAVE, anchor="w").pack(
             fill="x", padx=21, pady=(0, 14))
 
@@ -310,7 +310,7 @@ class VentanaPrincipal(ctk.CTk):
         menu.add_cascade(label="Archivo", menu=archivo)
 
         ayuda = Menu(menu, tearoff=0)
-        ayuda.add_command(label="Acerca de Fotia", command=self._acerca_de)
+        ayuda.add_command(label="Acerca de Fotique", command=self._acerca_de)
         menu.add_cascade(label="Ayuda", menu=ayuda)
         self.config(menu=menu)
 
@@ -379,8 +379,8 @@ class VentanaPrincipal(ctk.CTk):
         from .widgets import DialogoMensaje
 
         DialogoMensaje.info(
-            self, "Acerca de Fotia",
-            f"Fotia {VERSION} — sistema integral de gestión fotográfica.\n"
+            self, "Acerca de Fotique",
+            f"Fotique {VERSION} — sistema integral de gestión fotográfica.\n"
             "Escritorio, offline-first, base de datos SQLite local.\n"
             f"Base de datos: {self.app.ruta_db}",
         )

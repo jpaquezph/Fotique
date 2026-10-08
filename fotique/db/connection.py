@@ -1,4 +1,4 @@
-"""Conexión y ciclo de vida de la base de datos de Fotia."""
+"""Conexión y ciclo de vida de la base de datos de Fotique."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from ..util import dir_respaldos, ruta_base_datos
 
 ESQUEMA = Path(__file__).with_name("schema.sql").read_text(encoding="utf-8")
 
-# Versión del esquema (PRAGMA user_version). 1 = Fotia 1.0/1.1, 2 = Fotia 1.2.
+# Versión del esquema (PRAGMA user_version). 1 = Fotique 1.0/1.1, 2 = Fotique 1.2.
 VERSION_ESQUEMA = 2
 
 # Tablas cuya definición cambió en la v2 (CHECK o NOT NULL: SQLite exige
@@ -35,7 +35,7 @@ def _columnas(conn: sqlite3.Connection, tabla: str) -> list[str]:
 
 
 def _migrar_a_v2(conn: sqlite3.Connection) -> None:
-    """Lleva una base de Fotia 1.0/1.1 al esquema de la 1.2 sin perder datos."""
+    """Lleva una base de Fotique 1.0/1.1 al esquema de la 1.2 sin perder datos."""
     conn.commit()
     conn.execute("PRAGMA foreign_keys = OFF")
     # Sin esto, RENAME reescribiría las referencias de las demás tablas hacia
@@ -153,7 +153,7 @@ class BaseDatos:
         if destino is None:
             from ..util import a_texto
 
-            nombre = f"fotia_respaldo_{a_texto(__import__('datetime').date.today())}.db"
+            nombre = f"fotique_respaldo_{a_texto(__import__('datetime').date.today())}.db"
             destino = dir_respaldos() / nombre
         destino = Path(destino)
         if destino.suffix.lower() not in (".db", ".sqlite", ".sqlite3"):

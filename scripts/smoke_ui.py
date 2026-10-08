@@ -8,10 +8,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from fotia.app import Aplicacion  # noqa: E402
-from fotia.db import cargar_datos_demo  # noqa: E402
-from fotia.ui import VentanaPrincipal  # noqa: E402
-from fotia.ui.theme import aplicar_estilo_tabla, configurar_apariencia  # noqa: E402
+from fotique.app import Aplicacion  # noqa: E402
+from fotique.db import cargar_datos_demo  # noqa: E402
+from fotique.ui import VentanaPrincipal  # noqa: E402
+from fotique.ui.theme import aplicar_estilo_tabla, configurar_apariencia  # noqa: E402
 
 
 def _log(mensaje: str) -> None:
@@ -23,7 +23,7 @@ def main() -> int:
     shutil.rmtree(carpeta, ignore_errors=True)
     carpeta.mkdir(parents=True, exist_ok=True)
 
-    app = Aplicacion(carpeta / "fotia_smoke.db")
+    app = Aplicacion(carpeta / "fotique_smoke.db")
     configurar_apariencia("Dark")
     aplicar_estilo_tabla()
     cargar_datos_demo(app.repos)
@@ -44,7 +44,7 @@ def main() -> int:
 
     # cambio de apariencia: vuelve a estilizar las tablas ttk
     try:
-        from fotia.ui.theme import aplicar_estilo_tabla as aplicar
+        from fotique.ui.theme import aplicar_estilo_tabla as aplicar
 
         configurar_apariencia("Light")
         aplicar()
