@@ -151,8 +151,7 @@ def test_el_inventario_ordena_y_oculta_sus_columnas(app):
     import json
     from types import SimpleNamespace
 
-    from fotique.ui.dialogs import DialogoColumnas
-    from fotique.ui.views.equipos import CLAVE_COLUMNAS
+    from fotique.ui.widgets import DialogoColumnas
 
     app.ventana.mostrar("equipos")
     app.ventana.update()
@@ -177,7 +176,6 @@ def test_el_inventario_ordena_y_oculta_sus_columnas(app):
     dialogo.destroy()
 
     tabla.ordenar_columnas(orden, ocultas)
-    vista._guardar_columnas()
     assert orden.index("producto") == inicial.index("producto") + 1
     assert list(tabla.tree["displaycolumns"]) == [c for c in orden if c != "notas"]
     assert list(tabla.tree["columns"]) == inicial   # los datos no cambian de lugar
@@ -189,12 +187,12 @@ def test_el_inventario_ordena_y_oculta_sus_columnas(app):
     tabla._tomar_encabezado(SimpleNamespace(x=anchos[0] // 2, y=8))
     tabla._soltar_encabezado(SimpleNamespace(x=anchos[0] + anchos[1] + 10, y=8))
     assert tabla.columnas_visibles() == [visibles[1], visibles[2], visibles[0]] + visibles[3:]
-    guardado = json.loads(app.repos.config(CLAVE_COLUMNAS))
+    guardado = json.loads(app.repos.config("columnas.equipos"))
     assert guardado == {"orden": tabla.orden_columnas(), "ocultas": ["notas"]}
 
     # lo guardado se respeta al volver a armar la tabla, y lo inválido se ignora
     tabla.ordenar_columnas([], [])
-    vista._cargar_columnas()
+    tabla._cargar_columnas()
     assert tabla.orden_columnas() == guardado["orden"]
     assert tabla.columnas_ocultas() == ["notas"]
     tabla.ordenar_columnas(["no-existe", "notas"], inicial)
@@ -202,7 +200,45 @@ def test_el_inventario_ordena_y_oculta_sus_columnas(app):
     assert tabla.columnas_ocultas() == []        # siempre queda algo a la vista
 
     tabla.ordenar_columnas(inicial)
-    vista._guardar_columnas()
+    tabla._guardar_columnas()
+
+
+def test_todas_las_tablas_de_las_vistas_dejan_elegir_columnas(app):
+    from fotique.ui.widgets import Tabla
+
+    def tablas(widget):
+        for hijo in widget.winfo_children():
+            if isinstance(hijo, Tabla):
+                yield hijo
+            else:
+                yield from tablas(hijo)
+
+    claves = []
+    for clave in app.ventana.vistas:
+        app.ventana.mostrar(clave)
+        for tabla in tablas(app.ventana.vistas[clave]):
+            assert tabla._recordar is not None, clave
+            assert "Columnas" in _textos_de_botones(tabla)
+            claves.append(tabla._recordar[1])
+    assert len(claves) == len(set(claves)) >= 15   # cada tabla guarda lo suyo
+
+
+def test_proyecto_nuevo_sin_clientes_cargados(app):
+    from fotique.ui.dialogs import DialogoProyecto
+
+    dialogo = DialogoProyecto(app.ventana, [], app.repos.fotografos.listar())
+    dialogo.update()
+    assert dialogo.texto("cliente") == "— Sin cliente —"
+    dialogo._campos["titulo"].insert(0, "Sesión propia")
+    proyecto = dialogo._guardar()
+    assert (proyecto.cliente, proyecto.cliente_id) == ("", None)
+    dialogo.destroy()
+
+    guardado = app.repos.proyectos.crear(proyecto)
+    vista = app.ventana.vistas["proyectos"]
+    vista.refrescar()
+    assert guardado.id in [p.id for p in vista.tabla._objetos.values()]
+    app.repos.proyectos.eliminar(guardado.id)
 
 
 def test_el_inventario_muestra_la_categoria_y_la_administra(app):

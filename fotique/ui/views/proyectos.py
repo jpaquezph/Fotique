@@ -85,7 +85,8 @@ class VistaProyectos(VistaBase):
             {"clave": "saldo", "titulo": "Saldo", "ancho": 120, "anchor": "e"},
         ]
         self.tabla = Tabla(self._panel_proyectos, columnas_p,
-                           doble_click=lambda _e: self._detalles(), altura=4)
+                           doble_click=lambda _e: self._detalles(), altura=4,
+                           recordar=(self.repos, "columnas.proyectos"))
         self.tabla.grid(row=0, column=0, sticky="nsew")
         self._panel_proyectos.grid_rowconfigure(0, weight=1)
         self._panel_proyectos.grid_columnconfigure(0, weight=1)
@@ -99,7 +100,8 @@ class VistaProyectos(VistaBase):
         ]
         self.tabla_clientes = Tabla(self._panel_clientes, columnas_c,
                                     doble_click=lambda _e: self._editar_cliente(),
-                                    altura=4)
+                                    altura=4,
+                                    recordar=(self.repos, "columnas.proyectos.clientes"))
         self.tabla_clientes.grid(row=0, column=0, sticky="nsew")
         self._panel_clientes.grid_rowconfigure(0, weight=1)
         self._panel_clientes.grid_columnconfigure(0, weight=1)
@@ -145,7 +147,7 @@ class VistaProyectos(VistaBase):
             filas.append([
                 p.titulo or "—",
                 p.tipo or "—",
-                p.cliente,
+                p.cliente or "—",
                 p.fecha_evento.strftime("%d/%m/%Y") if p.fecha_evento else "—",
                 str(p.estado),
                 p.fotografo.nombre_completo if p.fotografo else "—",
@@ -183,12 +185,8 @@ class VistaProyectos(VistaBase):
         return proyecto
 
     def _nuevo_proyecto(self) -> None:
-        clientes = self.repos.clientes.listar()
-        if not clientes:
-            self.advertir("Sin clientes",
-                          "Primero registre un cliente en la pestaña Clientes.")
-            return
-        proyecto = DialogoProyecto(self, clientes, self.repos.fotografos.listar(),
+        proyecto = DialogoProyecto(self, self.repos.clientes.listar(),
+                                   self.repos.fotografos.listar(),
                                    tipos=self.repos.proyectos.tipos()).mostrar()
         if proyecto is None:
             return

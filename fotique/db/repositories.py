@@ -117,7 +117,7 @@ _PROYECTO_SQL = """
            f.email            AS f_email,
            f.activo           AS f_activo
       FROM proyectos p
-      JOIN clientes c   ON c.id = p.cliente_id
+      LEFT JOIN clientes c   ON c.id = p.cliente_id
       LEFT JOIN fotografos f ON f.id = p.fotografo_id
 """
 
@@ -134,7 +134,7 @@ def _map_proyecto(row: sqlite3.Row, pagos: Sequence[Pago] = ()) -> Proyecto:
             id=row["f_id"],
         )
     proyecto = Proyecto(
-        cliente=row["cliente_nombre"],
+        cliente=row["cliente_nombre"] or "",
         cobro_total=row["cobro_total"],
         sena=row["sena_monto"],
         titulo=row["titulo"] or "",
@@ -723,8 +723,6 @@ class ProyectoRepo:
     # -- escritura --------------------------------------------------------- #
     def crear(self, proyecto: Proyecto) -> Proyecto:
         proyecto.validar()
-        if proyecto.cliente_id is None:
-            raise DatosInvalidosError("Debe indicar el cliente del proyecto.")
         cur = self.conn.execute(
             "INSERT INTO proyectos (titulo, cliente_id, fotografo_id, fecha_evento, "
             "estado, cobro_total, sena_monto, sena_fecha, sena_medio, direccion, notas, "
@@ -1199,9 +1197,9 @@ class TrabajoRepo:
 _EVENTOS_UNION = """
     SELECT * FROM (
         SELECT p.fecha_evento AS fecha, '' AS hora,
-               p.titulo || ' — ' || c.nombre AS titulo,
+               p.titulo || COALESCE(' — ' || c.nombre, '') AS titulo,
                'Sesión' AS tipo, p.fotografo_id AS fotografo_id, p.id AS proyecto_id
-          FROM proyectos p JOIN clientes c ON c.id = p.cliente_id
+          FROM proyectos p LEFT JOIN clientes c ON c.id = p.cliente_id
          WHERE p.fecha_evento IS NOT NULL
         UNION ALL
         SELECT t.fecha_entrega, '',
@@ -1635,15 +1633,16 @@ class InformeRepo:
             """
             SELECT * FROM (
                 SELECT p.sena_fecha AS fecha, 'Ingreso' AS clase, 'Seña' AS concepto,
-                       p.titulo AS proyecto, c.nombre AS cliente, p.tipo AS categoria,
+                       p.titulo AS proyecto, COALESCE(c.nombre, '') AS cliente,
+                       p.tipo AS categoria,
                        p.sena_medio AS medio, p.sena_monto AS monto, NULL AS egreso_id
-                  FROM proyectos p JOIN clientes c ON c.id = p.cliente_id
+                  FROM proyectos p LEFT JOIN clientes c ON c.id = p.cliente_id
                  WHERE p.sena_monto > 0 AND p.sena_fecha IS NOT NULL
                 UNION ALL
                 SELECT g.fecha, 'Ingreso', COALESCE(NULLIF(g.notas, ''), 'Pago'),
-                       p.titulo, c.nombre, p.tipo, g.medio, g.monto, NULL
+                       p.titulo, COALESCE(c.nombre, ''), p.tipo, g.medio, g.monto, NULL
                   FROM pagos g JOIN proyectos p ON p.id = g.proyecto_id
-                  JOIN clientes c ON c.id = p.cliente_id
+                  LEFT JOIN clientes c ON c.id = p.cliente_id
                 UNION ALL
                 SELECT e.fecha, 'Egreso', e.concepto, COALESCE(p.titulo, ''), '',
                        e.categoria, '', e.monto, e.id

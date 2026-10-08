@@ -446,12 +446,11 @@ class DialogoProyecto(Dialogo):
                          ancho=640, alto=760)
         p = proyecto
         self._proyecto = p
-        if not clientes:
-            self.nota("Primero debe registrar un cliente (módulo Proyectos ▸ Clientes).")
         self.campo_selector_objetos(
-            "cliente", "Cliente *", clientes, _etiqueta_cliente,
+            "cliente", "Cliente", clientes, _etiqueta_cliente,
             seleccion=next((c for c in clientes if c.id == (p.cliente_id if p else None)),
                            None),
+            vacio="— Sin cliente —", opcional=True,
         )
         self.campo_texto("titulo", "Título del proyecto *", p.titulo if p else "",
                          "Casamiento López & Paz")
@@ -484,13 +483,11 @@ class DialogoProyecto(Dialogo):
     def _guardar(self) -> Proyecto:
         if not self.texto("titulo"):
             raise DatosInvalidosError("El título del proyecto es obligatorio.")
-        cliente = self.objeto("cliente")
-        if cliente is None:
-            raise DatosInvalidosError("Debe seleccionar un cliente.")
+        cliente = self.objeto("cliente")  # None: proyecto sin cliente
         fotografo = self.objeto("fotografo")
-        proyecto = self._proyecto or Proyecto(cliente=cliente.nombre)
-        proyecto.cliente = cliente.nombre
-        proyecto.cliente_id = cliente.id
+        proyecto = self._proyecto or Proyecto()
+        proyecto.cliente = cliente.nombre if cliente else ""
+        proyecto.cliente_id = cliente.id if cliente else None
         proyecto.titulo = self.texto("titulo")
         proyecto.tipo = self.texto("tipo")
         proyecto.fotografo = fotografo
@@ -1166,70 +1163,6 @@ class DialogoEgreso(Dialogo):
         )
         egreso.validar()
         return egreso
-
-
-class DialogoColumnas(Dialogo):
-    """Orden y visibilidad de las columnas de una tabla.
-
-    ``columnas`` son los pares ``(clave, título)`` en el orden predeterminado.
-    Devuelve ``(orden, ocultas)``.
-    """
-
-    def __init__(self, master: Any, columnas: Sequence[tuple[str, str]],
-                 orden: Sequence[str], ocultas: Sequence[str] = ()):
-        super().__init__(master, "Columnas", ancho=460, alto=600)
-        self._titulos = dict(columnas)
-        self._orden = [c for c in orden if c in self._titulos]
-        self._visible = {clave: ctk.BooleanVar(self, value=clave not in ocultas)
-                         for clave in self._titulos}
-        self.nota("Tilde las columnas que quiere ver y acomódelas con las flechas. "
-                  "En la tabla también puede arrastrar los encabezados.")
-        self._lista = ctk.CTkFrame(self.form, fg_color="transparent")
-        self._lista.grid(row=self._fila, column=0, columnspan=2, sticky="ew", padx=10)
-        self._lista.grid_columnconfigure(0, weight=1)
-        self._fila += 1
-        self._armar()
-        boton_secundario(self._pie, "Restablecer", self._restablecer,
-                         ancho=120).pack(side="left")
-        self.botones("Guardar", self._guardar)
-
-    def _armar(self) -> None:
-        for hijo in self._lista.winfo_children():
-            hijo.destroy()
-        ultima = len(self._orden) - 1
-        for i, clave in enumerate(self._orden):
-            ctk.CTkCheckBox(self._lista, text=self._titulos[clave], font=FUENTE_NORMAL,
-                            variable=self._visible[clave]).grid(
-                row=i, column=0, sticky="w", pady=4)
-            subir = boton_secundario(self._lista, "▲", lambda i=i: self._mover(i, -1),
-                                     ancho=36, alto=28)
-            subir.grid(row=i, column=1, padx=(8, 4), pady=4)
-            bajar = boton_secundario(self._lista, "▼", lambda i=i: self._mover(i, 1),
-                                     ancho=36, alto=28)
-            bajar.grid(row=i, column=2, pady=4)
-            if i == 0:
-                subir.configure(state="disabled")
-            if i == ultima:
-                bajar.configure(state="disabled")
-
-    def _mover(self, indice: int, paso: int) -> None:
-        destino = indice + paso
-        if 0 <= destino < len(self._orden):
-            self._orden[indice], self._orden[destino] = (
-                self._orden[destino], self._orden[indice])
-            self._armar()
-
-    def _restablecer(self) -> None:
-        self._orden = list(self._titulos)
-        for variable in self._visible.values():
-            variable.set(True)
-        self._armar()
-
-    def _guardar(self) -> tuple[list[str], list[str]]:
-        ocultas = [c for c in self._orden if not self._visible[c].get()]
-        if len(ocultas) == len(self._orden):
-            raise DatosInvalidosError("Deje al menos una columna a la vista.")
-        return list(self._orden), ocultas
 
 
 class DialogoCategorias(Dialogo):

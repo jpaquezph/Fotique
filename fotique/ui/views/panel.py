@@ -162,7 +162,8 @@ class VistaPanel(VistaBase):
         # -- saldos --------------------------------------------------------- #
         pendientes = sorted(((p, s) for p, s in saldos if s > 0),
                             key=lambda par: par[1], reverse=True)
-        filas = [(f"{p.nombre} — {p.cliente}", moneda(saldo), NARANJA)
+        filas = [(f"{p.nombre} — {p.cliente}" if p.cliente else p.nombre,
+                  moneda(saldo), NARANJA)
                  for p, saldo in pendientes[:14]]
         self._saldos.mostrar(
             filas or [("Todos los proyectos están saldados.", "", VERDE)])

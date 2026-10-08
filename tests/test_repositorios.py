@@ -183,6 +183,30 @@ def test_proyecto_con_sena_y_pagos(repos):
     assert [p.monto for p in repos.proyectos.listar()[0].pagos] == [300_000]
 
 
+def test_proyecto_sin_cliente(repos):
+    _, _, cliente = _alta_base(repos)
+    proyecto = repos.proyectos.crear(
+        Proyecto(titulo="Sesión propia", cobro_total=1000, sena=200,
+                 sena_fecha=date(2026, 9, 1), fecha_evento=date(2026, 9, 20))
+    )
+    repos.proyectos.crear_pago(proyecto.id, 300, date(2026, 9, 5), "Efectivo")
+
+    guardado = repos.proyectos.obtener(proyecto.id)
+    assert (guardado.cliente, guardado.cliente_id) == ("", None)
+    assert [p.id for p in repos.proyectos.listar()] == [proyecto.id]
+    assert guardado.obtener_saldo_pendiente() == 500
+    # también aparece en el calendario y en los movimientos de dinero
+    assert "Sesión propia" in [
+        e.titulo for e in repos.eventos.consolidado(date(2026, 9, 1), date(2026, 9, 30))]
+    movimientos = repos.informes.movimientos(date(2026, 9, 1), date(2026, 9, 30))
+    assert sorted(m["monto"] for m in movimientos) == [200, 300]
+    assert {m["cliente"] for m in movimientos} == {""}
+
+    guardado.cliente_id = cliente.id               # se le asigna cliente después
+    repos.proyectos.actualizar(guardado)
+    assert repos.proyectos.obtener(proyecto.id).cliente == "María López"
+
+
 def test_pago_con_monto_invalido(repos):
     _, _, cliente = _alta_base(repos)
     proyecto = repos.proyectos.crear(

@@ -116,7 +116,8 @@ class VistaCalendario(VistaBase):
             {"clave": "proyecto", "titulo": "Proyecto", "ancho": 160},
         ]
         self.tabla = Tabla(panel_dia, columnas, doble_click=lambda _e: self._editar_evento(),
-                           altura=4)
+                           altura=4,
+                           recordar=(self.repos, "columnas.calendario"))
         self.tabla.grid(row=1, column=0, sticky="nsew")
 
         self._pie = ctk.CTkLabel(panel_dia, text="", font=("Segoe UI", 11),

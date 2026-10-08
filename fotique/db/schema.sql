@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS clientes (
 CREATE TABLE IF NOT EXISTS proyectos (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     titulo       TEXT    NOT NULL DEFAULT '',
-    cliente_id   INTEGER NOT NULL REFERENCES clientes (id) ON DELETE RESTRICT,
+    cliente_id   INTEGER REFERENCES clientes (id) ON DELETE RESTRICT,  -- opcional
     fotografo_id INTEGER REFERENCES fotografos (id) ON DELETE SET NULL,
     fecha_evento TEXT,
     estado       TEXT    NOT NULL DEFAULT 'Presupuesto'

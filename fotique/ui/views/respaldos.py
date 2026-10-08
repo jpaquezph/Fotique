@@ -64,7 +64,8 @@ class VistaRespaldos(VistaBase):
             {"clave": "fecha", "titulo": "Creado", "ancho": 170, "anchor": "center"},
             {"clave": "tamano", "titulo": "Tamaño", "ancho": 130, "anchor": "e"},
         ]
-        self.tabla = Tabla(contenedor, columnas, altura=4)
+        self.tabla = Tabla(contenedor, columnas, altura=4,
+                           recordar=(self.repos, "columnas.respaldos"))
         self.tabla.grid(row=2, column=0, sticky="nsew")
         ctk.CTkLabel(contenedor,
                      text="Consejo: copie la carpeta de respaldos a un disco externo "

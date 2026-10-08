@@ -40,7 +40,8 @@ class VistaUsuarios(VistaBase):
             {"clave": "acceso", "titulo": "Último acceso", "ancho": 150, "anchor": "center"},
         ]
         self.tabla = Tabla(contenedor, columnas, doble_click=lambda _e: self._editar(),
-                           altura=4)
+                           altura=4,
+                           recordar=(self.repos, "columnas.usuarios"))
         self.tabla.grid(row=1, column=0, sticky="nsew")
 
         self._pie = ctk.CTkLabel(contenedor, text="", font=("Segoe UI", 11),

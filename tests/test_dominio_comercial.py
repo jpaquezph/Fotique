@@ -49,8 +49,7 @@ def test_proyecto_sin_cobro_total_no_da_saldo_negativo():
 
 
 def test_validaciones_de_proyecto():
-    with pytest.raises(DatosInvalidosError):
-        Proyecto(cliente="   ").validar()
+    Proyecto(cliente="   ").validar()            # el cliente es opcional
     with pytest.raises(DatosInvalidosError):
         Proyecto(cliente="X", cobro_total=-1).validar()
     with pytest.raises(DatosInvalidosError):

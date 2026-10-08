@@ -113,7 +113,7 @@ class VistaResumen(VistaBase):
             {"clave": "categoria", "titulo": "Tipo / categoría", "ancho": 120},
             {"clave": "medio", "titulo": "Medio", "ancho": 105},
             {"clave": "monto", "titulo": "Monto", "ancho": 120, "anchor": "e"},
-        ], altura=4)
+        ], altura=4, recordar=(self.repos, "columnas.resumen.movimientos"))
         self.tabla_movimientos.grid(row=2, column=0, sticky="nsew")
         self.torta_dinero = Torta(panel, "Ingresos por tipo de proyecto", formato=moneda)
         self.torta_dinero.grid(row=1, column=1, rowspan=2, sticky="n", padx=(10, 0))
@@ -128,7 +128,7 @@ class VistaResumen(VistaBase):
             {"clave": "estado", "titulo": "Estado", "ancho": 100, "anchor": "center"},
             {"clave": "salidas", "titulo": "Salidas", "ancho": 90, "anchor": "center"},
             {"clave": "ultima", "titulo": "Última salida", "ancho": 120, "anchor": "center"},
-        ], altura=4)
+        ], altura=4, recordar=(self.repos, "columnas.resumen.equipos"))
         self.tabla_equipos.grid(row=0, column=0, sticky="nsew")
         self.torta_equipos = Torta(panel, "Salidas por equipo")
         self.torta_equipos.grid(row=0, column=1, sticky="n", padx=(10, 0))
@@ -144,13 +144,13 @@ class VistaResumen(VistaBase):
             {"clave": "trabajos", "titulo": "Trabajos", "ancho": 100, "anchor": "center"},
             {"clave": "proyectos", "titulo": "Proyectos a cargo", "ancho": 140,
              "anchor": "center"},
-        ], altura=3)
+        ], altura=3, recordar=(self.repos, "columnas.resumen.fotografos"))
         self.tabla_fotografos.grid(row=0, column=0, sticky="nsew", pady=(0, 8))
         self.tabla_roles = Tabla(panel, [
             {"clave": "rol", "titulo": "Rol cubierto", "ancho": 220},
             {"clave": "eventos", "titulo": "Eventos", "ancho": 100, "anchor": "center"},
             {"clave": "veces", "titulo": "Veces", "ancho": 100, "anchor": "center"},
-        ], altura=3)
+        ], altura=3, recordar=(self.repos, "columnas.resumen.roles"))
         self.tabla_roles.grid(row=1, column=0, sticky="nsew")
         self.torta_roles = Torta(panel, "Roles cubiertos")
         self.torta_roles.grid(row=0, column=1, rowspan=2, sticky="n", padx=(10, 0))
@@ -166,13 +166,13 @@ class VistaResumen(VistaBase):
             {"clave": "contratado", "titulo": "Contratado", "ancho": 130, "anchor": "e"},
             {"clave": "cobrado", "titulo": "Cobrado", "ancho": 130, "anchor": "e"},
             {"clave": "saldo", "titulo": "Saldo", "ancho": 130, "anchor": "e"},
-        ], altura=3)
+        ], altura=3, recordar=(self.repos, "columnas.resumen.clientes"))
         self.tabla_clientes.grid(row=0, column=0, sticky="nsew", pady=(0, 8))
         self.tabla_estados = Tabla(panel, [
             {"clave": "que", "titulo": "Proyectos y contratos", "ancho": 220},
             {"clave": "estado", "titulo": "Estado", "ancho": 160},
             {"clave": "cantidad", "titulo": "Cantidad", "ancho": 100, "anchor": "center"},
-        ], altura=3)
+        ], altura=3, recordar=(self.repos, "columnas.resumen.estados"))
         self.tabla_estados.grid(row=1, column=0, sticky="nsew")
         self.torta_tipos = Torta(panel, "Proyectos por tipo")
         self.torta_tipos.grid(row=0, column=1, rowspan=2, sticky="n", padx=(10, 0))

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import date, datetime
 from typing import Any, Callable, Optional, Sequence
 
@@ -96,17 +97,18 @@ class Tabla(ctk.CTkFrame):
         altura: int = 12,
         estilo: str = "Fotique.Treeview",
         lineas_verticales: bool = True,
-        al_reordenar: Optional[Callable[[], None]] = None,
+        recordar: Optional[tuple[Any, str]] = None,
     ):
-        """``al_reordenar`` habilita mover las columnas arrastrando el encabezado
-        y avisa cada vez que el usuario lo hace."""
+        """``recordar=(repos, clave)`` deja reordenar y ocultar las columnas
+        (arrastrando el encabezado o con el botón «Columnas») y guarda la
+        elección en la configuración bajo ``clave``."""
         super().__init__(master, fg_color=FONDO, border_width=1,
                          border_color=BORDE, corner_radius=12)
         self.columnas = list(columnas)
         self._objetos: dict[str, Any] = {}
         self._doble_click = doble_click
         self._lineas_verticales = lineas_verticales
-        self._al_reordenar = al_reordenar
+        self._recordar = recordar
         self._arrastrada: Optional[str] = None
 
         claves = [c["clave"] for c in self.columnas]
@@ -133,7 +135,9 @@ class Tabla(ctk.CTkFrame):
 
         vsb = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview,
                             style="Fotique.Vertical.TScrollbar")
-        hsb = ttk.Scrollbar(self, orient="horizontal", command=self.tree.xview,
+        # Con «Columnas» la barra horizontal comparte la fila con el botón.
+        pie = self if recordar is None else ctk.CTkFrame(self, fg_color="transparent")
+        hsb = ttk.Scrollbar(pie, orient="horizontal", command=self.tree.xview,
                             style="Fotique.Horizontal.TScrollbar")
         # Las líneas de la grilla se redibujan cada vez que la tabla se desplaza.
         self._lineas_v: list[tk.Frame] = []
@@ -149,7 +153,15 @@ class Tabla(ctk.CTkFrame):
 
         self.tree.grid(row=0, column=0, sticky="nsew", padx=(6, 0), pady=(6, 0))
         vsb.grid(row=0, column=1, sticky="ns", padx=(0, 6), pady=(6, 0))
-        hsb.grid(row=1, column=0, sticky="ew", padx=(6, 0), pady=(0, 6))
+        if recordar is None:
+            hsb.grid(row=1, column=0, sticky="ew", padx=(6, 0), pady=(0, 6))
+        else:
+            pie.grid(row=1, column=0, columnspan=2, sticky="ew", padx=6, pady=(0, 6))
+            elegir = boton_secundario(pie, "Columnas", self.elegir_columnas,
+                                      ancho=84, alto=22)
+            elegir.configure(font=FUENTE_PEQUE)
+            elegir.pack(side="right", padx=(8, 0))
+            hsb.pack(side="left", fill="x", expand=True)
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
@@ -159,10 +171,11 @@ class Tabla(ctk.CTkFrame):
         # al arrastrar el borde de un encabezado cambia el ancho de la columna
         self.tree.bind("<B1-Motion>", self._pedir_trazo, add="+")
         self.tree.bind("<ButtonRelease-1>", self._pedir_trazo, add="+")
-        if al_reordenar is not None:
+        if recordar is not None:
             self.tree.bind("<ButtonPress-1>", self._tomar_encabezado, add="+")
             self.tree.bind("<B1-Motion>", self._arrastrar_encabezado, add="+")
             self.tree.bind("<ButtonRelease-1>", self._soltar_encabezado, add="+")
+            self._cargar_columnas()
 
     # -- orden y visibilidad de las columnas ------------------------------- #
     def orden_columnas(self) -> list[str]:
@@ -212,7 +225,30 @@ class Tabla(ctk.CTkFrame):
         orden.remove(arrastrada)
         orden.insert(posicion, arrastrada)
         self.ordenar_columnas(orden, self._ocultas)
-        self._al_reordenar()
+        self._guardar_columnas()
+
+    def _cargar_columnas(self) -> None:
+        repos, clave = self._recordar
+        try:
+            guardado = json.loads(repos.config(clave, "") or "{}")
+        except ValueError:
+            guardado = {}
+        if isinstance(guardado, dict):
+            self.ordenar_columnas(guardado.get("orden") or [], guardado.get("ocultas") or [])
+
+    def _guardar_columnas(self) -> None:
+        repos, clave = self._recordar
+        repos.set_config(clave, json.dumps({
+            "orden": self.orden_columnas(), "ocultas": self.columnas_ocultas()}))
+
+    def elegir_columnas(self) -> None:
+        """Abre el diálogo de orden y visibilidad y guarda lo elegido."""
+        elegido = DialogoColumnas(
+            self, [(c["clave"], c["titulo"]) for c in self.columnas],
+            self.orden_columnas(), self.columnas_ocultas()).mostrar()
+        if elegido is not None:
+            self.ordenar_columnas(*elegido)
+            self._guardar_columnas()
 
     def _colorear_etiquetas(self) -> None:
         for nombre, color in colores_etiquetas().items():
@@ -709,6 +745,70 @@ class Dialogo(ctk.CTkToplevel):
         self.focus_set()
         self.wait_window(self)
         return self.resultado
+
+
+class DialogoColumnas(Dialogo):
+    """Orden y visibilidad de las columnas de una tabla.
+
+    ``columnas`` son los pares ``(clave, título)`` en el orden predeterminado.
+    Devuelve ``(orden, ocultas)``.
+    """
+
+    def __init__(self, master: Any, columnas: Sequence[tuple[str, str]],
+                 orden: Sequence[str], ocultas: Sequence[str] = ()):
+        super().__init__(master, "Columnas", ancho=460, alto=600)
+        self._titulos = dict(columnas)
+        self._orden = [c for c in orden if c in self._titulos]
+        self._visible = {clave: ctk.BooleanVar(self, value=clave not in ocultas)
+                         for clave in self._titulos}
+        self.nota("Tilde las columnas que quiere ver y acomódelas con las flechas. "
+                  "En la tabla también puede arrastrar los encabezados.")
+        self._lista = ctk.CTkFrame(self.form, fg_color="transparent")
+        self._lista.grid(row=self._fila, column=0, columnspan=2, sticky="ew", padx=10)
+        self._lista.grid_columnconfigure(0, weight=1)
+        self._fila += 1
+        self._armar()
+        boton_secundario(self._pie, "Restablecer", self._restablecer,
+                         ancho=120).pack(side="left")
+        self.botones("Guardar", self._guardar)
+
+    def _armar(self) -> None:
+        for hijo in self._lista.winfo_children():
+            hijo.destroy()
+        ultima = len(self._orden) - 1
+        for i, clave in enumerate(self._orden):
+            ctk.CTkCheckBox(self._lista, text=self._titulos[clave], font=FUENTE_NORMAL,
+                            variable=self._visible[clave]).grid(
+                row=i, column=0, sticky="w", pady=4)
+            subir = boton_secundario(self._lista, "▲", lambda i=i: self._mover(i, -1),
+                                     ancho=36, alto=28)
+            subir.grid(row=i, column=1, padx=(8, 4), pady=4)
+            bajar = boton_secundario(self._lista, "▼", lambda i=i: self._mover(i, 1),
+                                     ancho=36, alto=28)
+            bajar.grid(row=i, column=2, pady=4)
+            if i == 0:
+                subir.configure(state="disabled")
+            if i == ultima:
+                bajar.configure(state="disabled")
+
+    def _mover(self, indice: int, paso: int) -> None:
+        destino = indice + paso
+        if 0 <= destino < len(self._orden):
+            self._orden[indice], self._orden[destino] = (
+                self._orden[destino], self._orden[indice])
+            self._armar()
+
+    def _restablecer(self) -> None:
+        self._orden = list(self._titulos)
+        for variable in self._visible.values():
+            variable.set(True)
+        self._armar()
+
+    def _guardar(self) -> tuple[list[str], list[str]]:
+        ocultas = [c for c in self._orden if not self._visible[c].get()]
+        if len(ocultas) == len(self._orden):
+            raise DatosInvalidosError("Deje al menos una columna a la vista.")
+        return list(self._orden), ocultas
 
 
 def ejecutar_protegido(

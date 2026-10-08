@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from datetime import date
 
 import customtkinter as ctk
@@ -11,7 +10,6 @@ from ...domain.models import EstadoEquipo, EstadoService
 from ..dialogs import (
     DialogoAsignar,
     DialogoCategorias,
-    DialogoColumnas,
     DialogoDevolver,
     DialogoEquipo,
     DialogoHistorialEquipos,
@@ -20,7 +18,6 @@ from ..theme import GRIS_TEXTO
 from ..widgets import Tabla, boton, boton_secundario
 from .base import VistaBase
 
-CLAVE_COLUMNAS = "columnas.equipos"  # orden y columnas ocultas del inventario
 
 class VistaEquipos(VistaBase):
     clave = "equipos"
@@ -76,42 +73,12 @@ class VistaEquipos(VistaBase):
             {"clave": "notas", "titulo": "Notas", "ancho": 180},
         ]
         self.tabla = Tabla(contenedor, columnas, doble_click=self._historial, altura=4,
-                           al_reordenar=self._guardar_columnas)
+                           recordar=(self.repos, "columnas.equipos"))
         self.tabla.grid(row=1, column=0, sticky="nsew")
-        self._cargar_columnas()
 
-        pie = ctk.CTkFrame(contenedor, fg_color="transparent")
-        pie.grid(row=2, column=0, sticky="ew", pady=(6, 0))
-        boton_secundario(pie, "Columnas", self._columnas, ancho=100, alto=28).pack(
-            side="right")
-        self._pie = ctk.CTkLabel(pie, text="", font=("Segoe UI", 11),
+        self._pie = ctk.CTkLabel(contenedor, text="", font=("Segoe UI", 11),
                                  text_color=GRIS_TEXTO, anchor="w")
-        self._pie.pack(side="left", fill="x", expand=True)
-
-    # -- columnas ---------------------------------------------------------- #
-    def _cargar_columnas(self) -> None:
-        try:
-            guardado = json.loads(self.repos.config(CLAVE_COLUMNAS, "") or "{}")
-        except ValueError:
-            guardado = {}
-        if isinstance(guardado, dict):
-            self.tabla.ordenar_columnas(guardado.get("orden") or [],
-                                        guardado.get("ocultas") or [])
-
-    def _guardar_columnas(self) -> None:
-        self.repos.set_config(CLAVE_COLUMNAS, json.dumps({
-            "orden": self.tabla.orden_columnas(),
-            "ocultas": self.tabla.columnas_ocultas(),
-        }))
-
-    def _columnas(self) -> None:
-        elegido = DialogoColumnas(
-            self, [(c["clave"], c["titulo"]) for c in self.tabla.columnas],
-            self.tabla.orden_columnas(), self.tabla.columnas_ocultas()).mostrar()
-        if elegido is None:
-            return
-        self.tabla.ordenar_columnas(*elegido)
-        self._guardar_columnas()
+        self._pie.grid(row=2, column=0, sticky="ew", pady=(6, 0))
 
     # -- datos ------------------------------------------------------------- #
     def refrescar(self) -> None:

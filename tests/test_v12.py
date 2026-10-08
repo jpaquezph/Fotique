@@ -245,7 +245,7 @@ def test_migra_una_base_de_la_version_anterior(tmp_path):
         assert conn.execute("PRAGMA user_version").fetchone()[0] == VERSION_ESQUEMA
         assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
         assert conn.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
-        assert (tmp_path / "vieja.db.antes-de-v2").exists()
+        assert (tmp_path / f"vieja.db.antes-de-v{VERSION_ESQUEMA}").exists()
 
         assert [(u.usuario, str(u.rol)) for u in base.repos.usuarios.listar()] == [
             ("jorge", "Administrador"), ("marina", "Usuario")]
@@ -263,6 +263,8 @@ def test_migra_una_base_de_la_version_anterior(tmp_path):
 
         # lo que la versión anterior rechazaba ahora se puede guardar
         base.repos.equipos.crear(Equipo(marca="Sony", modelo="FX3"))
+        sin_cliente = base.repos.proyectos.crear(Proyecto(titulo="Sin cliente"))
+        assert base.repos.proyectos.obtener(sin_cliente.id).cliente == ""
         base.repos.trabajos.cambiar_estado(trabajo.id, EstadoTrabajo.CANCELADO)
         # y las claves foráneas siguen apuntando a las tablas reconstruidas
         base.repos.equipos.devolver(equipos[0].id if equipos[0].numero_serie == "SN1"

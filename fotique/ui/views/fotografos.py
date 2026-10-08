@@ -54,7 +54,8 @@ class VistaFotografos(VistaBase):
             {"clave": "rol", "titulo": "Rol en el sistema", "ancho": 130, "anchor": "center"},
         ]
         self.tabla = Tabla(contenedor, columnas, doble_click=lambda _e: self._ficha(),
-                           altura=4)
+                           altura=4,
+                           recordar=(self.repos, "columnas.fotografos"))
         self.tabla.grid(row=1, column=0, sticky="nsew")
 
         self._pie = ctk.CTkLabel(contenedor, text="", font=("Segoe UI", 11),

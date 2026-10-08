@@ -248,9 +248,7 @@ class Proyecto:
             )
 
     def validar(self) -> None:
-        # En la base el nombre del cliente se resuelve por JOIN: basta el vínculo.
-        if not (self.cliente or "").strip() and self.cliente_id is None:
-            raise DatosInvalidosError("El cliente del proyecto es obligatorio.")
+        # El cliente es opcional: un proyecto puede cargarse antes que su cliente.
         if self.cobro_total < 0 or self.sena < 0:
             raise DatosInvalidosError("Los importes no pueden ser negativos.")
         if self.sena > self.cobro_total > 0:

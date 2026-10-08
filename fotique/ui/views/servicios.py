@@ -54,7 +54,8 @@ class VistaServicios(VistaBase):
         ]
         self.tabla = Tabla(contenedor, columnas, doble_click=lambda _e: self._editar(),
                            altura=4, estilo="Amplia.Fotique.Treeview",
-                           lineas_verticales=False)
+                           lineas_verticales=False,
+                           recordar=(self.repos, "columnas.servicios"))
         self.tabla.grid(row=1, column=0, sticky="nsew")
 
         self._pie = ctk.CTkLabel(contenedor, text="", font=("Segoe UI", 11),

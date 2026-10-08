@@ -11,15 +11,19 @@ from ..util import dir_respaldos, ruta_base_datos
 
 ESQUEMA = Path(__file__).with_name("schema.sql").read_text(encoding="utf-8")
 
-# Versión del esquema (PRAGMA user_version). 1 = Fotique 1.0/1.1, 2 = Fotique 1.2.
-VERSION_ESQUEMA = 2
+# Versión del esquema (PRAGMA user_version). 1 = Fotique 1.0/1.1, 2 = Fotique 1.2,
+# 3 = Fotique 1.5 (el cliente del proyecto pasa a ser opcional).
+VERSION_ESQUEMA = 3
 
-# Tablas cuya definición cambió en la v2 (CHECK o NOT NULL: SQLite exige
+# Tablas cuya definición cambió en cada versión (CHECK o NOT NULL: SQLite exige
 # reconstruirlas) y cómo se copia cada columna que necesita conversión.
-_RECONSTRUIR_V2 = {
-    "equipos": {"numero_serie": "NULLIF(TRIM(numero_serie), '')"},
-    "trabajos_pendientes": {},
-    "usuarios": {"rol": "CASE rol WHEN 'Operador' THEN 'Usuario' ELSE rol END"},
+_RECONSTRUIR = {
+    2: {
+        "equipos": {"numero_serie": "NULLIF(TRIM(numero_serie), '')"},
+        "trabajos_pendientes": {},
+        "usuarios": {"rol": "CASE rol WHEN 'Operador' THEN 'Usuario' ELSE rol END"},
+    },
+    3: {"proyectos": {}},
 }
 # Categorías de equipos con las que arranca una base (después se editan a mano).
 CATEGORIAS_EQUIPO_INICIALES = ("Cámara", "Iluminación", "Accesorio", "Mantenimiento", "Filtros")
@@ -37,20 +41,24 @@ def _columnas(conn: sqlite3.Connection, tabla: str) -> list[str]:
     return [fila[1] for fila in conn.execute(f"PRAGMA table_info({tabla})")]
 
 
-def _migrar_a_v2(conn: sqlite3.Connection) -> None:
-    """Lleva una base de Fotique 1.0/1.1 al esquema de la 1.2 sin perder datos."""
+def _migrar(conn: sqlite3.Connection, version: int) -> None:
+    """Lleva una base de una versión anterior al esquema actual sin perder datos."""
+    reconstruir: dict[str, dict[str, str]] = {}
+    for desde, tablas in _RECONSTRUIR.items():
+        if version < desde:
+            reconstruir.update(tablas)
     conn.commit()
     conn.execute("PRAGMA foreign_keys = OFF")
     # Sin esto, RENAME reescribiría las referencias de las demás tablas hacia
     # la copia vieja que después se borra.
     conn.execute("PRAGMA legacy_alter_table = ON")
     try:
-        for tabla, columnas in _COLUMNAS_NUEVAS_V2.items():
+        for tabla, columnas in (_COLUMNAS_NUEVAS_V2 if version < 2 else {}).items():
             existentes = _columnas(conn, tabla)
             for nombre, definicion in columnas:
                 if nombre not in existentes:
                     conn.execute(f"ALTER TABLE {tabla} ADD COLUMN {nombre} {definicion}")
-        viejas = [t for t in _RECONSTRUIR_V2 if _columnas(conn, t)]
+        viejas = [t for t in reconstruir if _columnas(conn, t)]
         for tabla in viejas:
             conn.execute(f"ALTER TABLE {tabla} RENAME TO {tabla}_v1")
         conn.executescript(ESQUEMA)  # crea las tablas con la definición nueva
@@ -58,7 +66,7 @@ def _migrar_a_v2(conn: sqlite3.Connection) -> None:
         for tabla in viejas:
             comunes = [c for c in _columnas(conn, f"{tabla}_v1")
                        if c in _columnas(conn, tabla)]
-            origen = [_RECONSTRUIR_V2[tabla].get(c, c) for c in comunes]
+            origen = [reconstruir[tabla].get(c, c) for c in comunes]
             conn.execute(
                 f"INSERT INTO {tabla} ({', '.join(comunes)}) "
                 f"SELECT {', '.join(origen)} FROM {tabla}_v1"
@@ -76,14 +84,15 @@ def _preparar_esquema(conn: sqlite3.Connection, destino: str) -> None:
     sin_categorias_equipo = not _columnas(conn, "categorias_equipo")
     if es_base_existente and version < VERSION_ESQUEMA:
         if destino != ":memory:":  # copia de seguridad antes de tocar tablas
-            copia = Path(destino).with_suffix(Path(destino).suffix + ".antes-de-v2")
+            copia = Path(destino).with_suffix(
+                Path(destino).suffix + f".antes-de-v{VERSION_ESQUEMA}")
             if not copia.exists():
                 respaldo = sqlite3.connect(copia)
                 try:
                     conn.backup(respaldo)
                 finally:
                     respaldo.close()
-        _migrar_a_v2(conn)
+        _migrar(conn, version)
     conn.executescript(ESQUEMA)
     # La categoría de los equipos llegó en la 1.4: se agrega a las bases previas
     # y la lista se carga una sola vez (lo que se quite después no vuelve).

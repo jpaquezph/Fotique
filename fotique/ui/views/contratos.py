@@ -54,7 +54,8 @@ class VistaContratos(VistaBase):
         ]
         self.tabla_contratos = Tabla(self._tab.tab("Contratos"), columnas_c,
                                      doble_click=lambda _e: self._editar_contrato(),
-                                     altura=4)
+                                     altura=4,
+                                     recordar=(self.repos, "columnas.contratos.contratos"))
         self.tabla_contratos.pack(fill="both", expand=True)
 
         columnas_p = [
@@ -64,7 +65,8 @@ class VistaContratos(VistaBase):
         ]
         self.tabla_plantillas = Tabla(self._tab.tab("Plantillas"), columnas_p,
                                       doble_click=lambda _e: self._editar_plantilla(),
-                                      altura=4)
+                                      altura=4,
+                                      recordar=(self.repos, "columnas.contratos.plantillas"))
         self.tabla_plantillas.pack(fill="both", expand=True)
 
         self._pie = ctk.CTkLabel(contenedor, text="", font=("Segoe UI", 11),
