@@ -21,6 +21,9 @@ _RECONSTRUIR_V2 = {
     "trabajos_pendientes": {},
     "usuarios": {"rol": "CASE rol WHEN 'Operador' THEN 'Usuario' ELSE rol END"},
 }
+# Categorías de equipos con las que arranca una base (después se editan a mano).
+CATEGORIAS_EQUIPO_INICIALES = ("Cámara", "Iluminación", "Accesorio", "Mantenimiento", "Filtros")
+
 _COLUMNAS_NUEVAS_V2 = {
     "historial_asignaciones": [
         ("proyecto_id", "INTEGER REFERENCES proyectos (id) ON DELETE SET NULL"),
@@ -70,6 +73,7 @@ def _migrar_a_v2(conn: sqlite3.Connection) -> None:
 def _preparar_esquema(conn: sqlite3.Connection, destino: str) -> None:
     version = conn.execute("PRAGMA user_version").fetchone()[0]
     es_base_existente = bool(_columnas(conn, "equipos"))
+    sin_categorias_equipo = not _columnas(conn, "categorias_equipo")
     if es_base_existente and version < VERSION_ESQUEMA:
         if destino != ":memory:":  # copia de seguridad antes de tocar tablas
             copia = Path(destino).with_suffix(Path(destino).suffix + ".antes-de-v2")
@@ -81,6 +85,15 @@ def _preparar_esquema(conn: sqlite3.Connection, destino: str) -> None:
                     respaldo.close()
         _migrar_a_v2(conn)
     conn.executescript(ESQUEMA)
+    # La categoría de los equipos llegó en la 1.4: se agrega a las bases previas
+    # y la lista se carga una sola vez (lo que se quite después no vuelve).
+    if "categoria" not in _columnas(conn, "equipos"):
+        conn.execute("ALTER TABLE equipos ADD COLUMN categoria TEXT NOT NULL DEFAULT ''")
+    if sin_categorias_equipo:
+        conn.executemany(
+            "INSERT OR IGNORE INTO categorias_equipo (nombre) VALUES (?)",
+            [(nombre,) for nombre in CATEGORIAS_EQUIPO_INICIALES],
+        )
     # Las categorías del tarifario pasaron a tener lista propia: se completa
     # con las que ya usan los servicios (no hace nada si ya están).
     conn.execute(

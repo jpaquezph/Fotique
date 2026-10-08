@@ -101,6 +101,7 @@ def _map_equipo(row: sqlite3.Row) -> Equipo:
         fecha_service_proximo=a_fecha(row["fecha_service_proximo"]),
         fotografo_actual=fotografo,
         notas=row["notas"] or "",
+        categoria=row["categoria"] or "",
     )
 
 
@@ -303,10 +304,11 @@ class EquipoRepo:
         if texto.strip():
             condiciones.append(
                 "(COALESCE(e.numero_serie, '') LIKE ? OR e.marca LIKE ? OR e.modelo LIKE ? "
+                "OR e.categoria LIKE ? "
                 "OR COALESCE(f.nombre, '') LIKE ? OR COALESCE(f.apellido, '') LIKE ?)"
             )
             patron = f"%{texto.strip()}%"
-            params.extend([patron] * 5)
+            params.extend([patron] * 6)
         if condiciones:
             sql += " WHERE " + " AND ".join(condiciones)
         sql += " ORDER BY e.estado DESC, e.marca, e.modelo"
@@ -324,11 +326,12 @@ class EquipoRepo:
             )
         if not equipo.marca.strip() or not equipo.modelo.strip():
             raise DatosInvalidosError("Marca y modelo son obligatorios.")
+        self._registrar_categoria(equipo.categoria)
         try:
             cur = self.conn.execute(
                 "INSERT INTO equipos (numero_serie, marca, modelo, fecha_adquisicion, "
-                "fecha_service_ultimo, fecha_service_proximo, estado, fotografo_id, notas) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "fecha_service_ultimo, fecha_service_proximo, estado, fotografo_id, notas, "
+                "categoria) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     equipo.numero_serie.strip() or None,
                     equipo.marca.strip(),
@@ -339,6 +342,7 @@ class EquipoRepo:
                     str(equipo.estado),
                     None,
                     equipo.notas or "",
+                    equipo.categoria.strip(),
                 ),
             )
         except sqlite3.IntegrityError as exc:
@@ -356,11 +360,12 @@ class EquipoRepo:
             raise DatosInvalidosError("Un equipo 'En uso' requiere fotógrafo responsable.")
         if not equipo.marca.strip() or not equipo.modelo.strip():
             raise DatosInvalidosError("Marca y modelo son obligatorios.")
+        self._registrar_categoria(equipo.categoria)
         try:
             self.conn.execute(
                 "UPDATE equipos SET numero_serie=?, marca=?, modelo=?, "
                 "fecha_adquisicion=?, fecha_service_ultimo=?, fecha_service_proximo=?, "
-                "estado=?, fotografo_id=?, notas=? WHERE id=?",
+                "estado=?, fotografo_id=?, notas=?, categoria=? WHERE id=?",
                 (
                     equipo.numero_serie.strip() or None,
                     equipo.marca.strip(),
@@ -371,6 +376,7 @@ class EquipoRepo:
                     str(equipo.estado),
                     equipo.fotografo_actual.id if equipo.fotografo_actual else None,
                     equipo.notas or "",
+                    equipo.categoria.strip(),
                     equipo.id,
                 ),
             )
@@ -390,6 +396,52 @@ class EquipoRepo:
                 "Devuelva el equipo al stock antes de eliminarlo."
             )
         self.conn.execute("DELETE FROM equipos WHERE id = ?", (equipo_id,))
+        self.conn.commit()
+
+    # -- categorías ------------------------------------------------------- #
+    def categorias(self) -> list[str]:
+        filas = self.conn.execute(
+            "SELECT nombre FROM categorias_equipo ORDER BY nombre"
+        ).fetchall()
+        return [r["nombre"] for r in filas]
+
+    def categorias_con_uso(self) -> list[tuple[str, int]]:
+        """Cada categoría con la cantidad de equipos que la usan."""
+        filas = self.conn.execute(
+            "SELECT c.nombre, (SELECT COUNT(*) FROM equipos e "
+            " WHERE e.categoria = c.nombre COLLATE NOCASE) AS n "
+            "FROM categorias_equipo c ORDER BY c.nombre"
+        ).fetchall()
+        return [(r["nombre"], r["n"]) for r in filas]
+
+    def _registrar_categoria(self, nombre: str) -> None:
+        if nombre and nombre.strip():
+            self.conn.execute(
+                "INSERT OR IGNORE INTO categorias_equipo (nombre) VALUES (?)",
+                (nombre.strip(),),
+            )
+
+    def crear_categoria(self, nombre: str) -> str:
+        nombre = (nombre or "").strip()
+        if not nombre:
+            raise DatosInvalidosError("La categoría necesita un nombre.")
+        if nombre.lower() in (c.lower() for c in self.categorias()):
+            raise DatosInvalidosError(f"Ya existe la categoría «{nombre}».")
+        self._registrar_categoria(nombre)
+        self.conn.commit()
+        return nombre
+
+    def eliminar_categoria(self, nombre: str) -> None:
+        """Sólo se quita una categoría que ningún equipo esté usando."""
+        en_uso = self.conn.execute(
+            "SELECT COUNT(*) FROM equipos WHERE categoria = ? COLLATE NOCASE", (nombre,)
+        ).fetchone()[0]
+        if en_uso:
+            raise EliminacionRestringidaError(
+                f"«{nombre}» tiene {en_uso} equipo(s). Cámbielos de categoría o "
+                "elimínelos antes de quitarla."
+            )
+        self.conn.execute("DELETE FROM categorias_equipo WHERE nombre = ?", (nombre,))
         self.conn.commit()
 
     def asignar(

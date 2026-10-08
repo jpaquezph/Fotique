@@ -257,6 +257,8 @@ def test_migra_una_base_de_la_version_anterior(tmp_path):
         assert (trabajo.titulo, trabajo.estado, trabajo.rol) == (
             "Álbum", EstadoTrabajo.EN_EDICION, "")
         assert base.repos.proyectos.listar()[0].tipo == ""
+        assert {e.categoria for e in equipos} == {""}
+        assert "Cámara" in base.repos.equipos.categorias()
 
         # lo que la versión anterior rechazaba ahora se puede guardar
         base.repos.equipos.crear(Equipo(marca="Sony", modelo="FX3"))
@@ -271,6 +273,53 @@ def test_migra_una_base_de_la_version_anterior(tmp_path):
     base = BaseDatos(ruta)  # abrirla de nuevo no vuelve a migrar ni pierde datos
     try:
         assert len(base.repos.equipos.listar()) == 3
+    finally:
+        base.cerrar()
+
+
+# -- categorías de equipos --------------------------------------------------- #
+
+
+def test_categorias_de_equipos_se_agregan_y_quitan(repos):
+    from fotique.db.connection import CATEGORIAS_EQUIPO_INICIALES
+    from fotique.domain.errors import EliminacionRestringidaError
+
+    equipos = repos.equipos
+    assert equipos.categorias() == sorted(CATEGORIAS_EQUIPO_INICIALES)
+    equipos.crear_categoria("Drone")
+    with pytest.raises(DatosInvalidosError):
+        equipos.crear_categoria("drone")        # ya existe (sin distinguir mayúsculas)
+    with pytest.raises(DatosInvalidosError):
+        equipos.crear_categoria("   ")
+
+    camara = equipos.crear(Equipo(marca="Sony", modelo="A7 IV", categoria="Cámara"))
+    sin = equipos.crear(Equipo(marca="Godox", modelo="V1"))
+    assert equipos.obtener(camara.id).categoria == "Cámara"
+    assert equipos.obtener(sin.id).categoria == ""
+    assert dict(equipos.categorias_con_uso())["Cámara"] == 1
+    assert [e.id for e in equipos.listar(texto="cámara")] == [camara.id]
+
+    sin.categoria = "Lentes"                    # una nueva se suma sola a la lista
+    equipos.actualizar(sin)
+    assert "Lentes" in equipos.categorias()
+
+    with pytest.raises(EliminacionRestringidaError):
+        equipos.eliminar_categoria("Cámara")    # la usa un equipo
+    equipos.eliminar_categoria("Drone")
+    equipos.eliminar_categoria("Filtros")
+    assert "Drone" not in equipos.categorias() and "Filtros" not in equipos.categorias()
+
+
+def test_las_categorias_quitadas_no_vuelven_al_reabrir(tmp_path):
+    ruta = tmp_path / "categorias.db"
+    base = BaseDatos(ruta)
+    base.repos.equipos.eliminar_categoria("Filtros")
+    base.cerrar()
+
+    base = BaseDatos(ruta)
+    try:
+        assert "Filtros" not in base.repos.equipos.categorias()
+        assert "Cámara" in base.repos.equipos.categorias()
     finally:
         base.cerrar()
 

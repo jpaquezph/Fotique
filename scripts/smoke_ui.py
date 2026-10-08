@@ -9,7 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fotique.app import Aplicacion  # noqa: E402
-from fotique.db import cargar_datos_demo  # noqa: E402
+from tests.datos_demo import cargar_datos_demo  # noqa: E402
 from fotique.ui import VentanaPrincipal  # noqa: E402
 from fotique.ui.theme import aplicar_estilo_tabla, configurar_apariencia  # noqa: E402
 

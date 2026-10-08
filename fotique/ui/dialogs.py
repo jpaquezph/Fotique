@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Any, Optional, Sequence
+from typing import Any, Callable, Optional, Sequence
 
 import customtkinter as ctk
 
@@ -50,11 +50,29 @@ def _etiqueta_proyecto(p: Proyecto) -> str:
 
 
 class DialogoEquipo(Dialogo):
-    def __init__(self, master: Any, equipo: Optional[Equipo] = None):
+    SIN_CATEGORIA = "Sin categoría"
+
+    def __init__(self, master: Any, equipo: Optional[Equipo] = None,
+                 categorias: Sequence[str] = (),
+                 administrar: Optional[Callable[[Any], Sequence[str]]] = None):
+        """``administrar`` abre el alta y baja de categorías sobre este diálogo
+        y devuelve la lista actualizada; sin él no se muestra el botón."""
         super().__init__(master, "Editar equipo" if equipo else "Nuevo equipo",
                          ancho=600, alto=640)
         e = equipo
         self._equipo = e
+        self._administrar = administrar
+        categorias = list(categorias)
+        if e is not None and e.categoria and e.categoria not in categorias:
+            categorias.append(e.categoria)
+        menu = self.campo_selector("categoria", "Categoría",
+                                   [self.SIN_CATEGORIA] + categorias,
+                                   e.categoria if e else None)
+        if administrar is not None:
+            menu.configure(width=200)
+            boton_secundario(self.form, "Agregar / quitar", self._editar_categorias,
+                             ancho=120).grid(row=self._fila - 1, column=1, sticky="w",
+                                             padx=(218, 10), pady=6)
         self.campo_texto("serie", "Número de serie", e.numero_serie if e else "",
                          "Opcional")
         self.campo_texto("marca", "Marca *", e.marca if e else "", "Sony")
@@ -78,12 +96,22 @@ class DialogoEquipo(Dialogo):
         self.campo_area("notas", "Notas", e.notas if e else "", altura=110)
         self.botones("Guardar", self._guardar)
 
+    def _editar_categorias(self) -> None:
+        categorias = [self.SIN_CATEGORIA] + list(self._administrar(self))
+        menu, actual = self._campos["categoria"], self.texto("categoria")
+        menu.configure(values=categorias)
+        menu.set(actual if actual in categorias else self.SIN_CATEGORIA)
+        self.grab_set()  # el diálogo de categorías soltó la captura al cerrarse
+        self.focus_set()
+
     def _guardar(self) -> Equipo:
         serie, marca, modelo = self.texto("serie"), self.texto("marca"), self.texto("modelo")
         if not marca or not modelo:
             raise DatosInvalidosError("Marca y modelo son obligatorios.")
         equipo = self._equipo or Equipo(numero_serie=serie, marca=marca, modelo=modelo)
         equipo.numero_serie, equipo.marca, equipo.modelo = serie, marca, modelo
+        categoria = self.texto("categoria")
+        equipo.categoria = "" if categoria == self.SIN_CATEGORIA else categoria
         equipo.fecha_adquisicion = self.fecha("adquisicion")
         equipo.fecha_service_ultimo = self.fecha("service_ultimo")
         equipo.fecha_service_proximo = self.fecha("service_proximo")
@@ -1138,10 +1166,11 @@ class DialogoEgreso(Dialogo):
 
 
 class DialogoCategorias(Dialogo):
-    """Alta y baja de categorías del tarifario. Opera directo sobre el repositorio."""
+    """Alta y baja de categorías (tarifario o equipos). Opera directo sobre el repositorio."""
 
-    def __init__(self, master: Any, repo: Any):
-        super().__init__(master, "Categorías del tarifario", ancho=560, alto=520)
+    def __init__(self, master: Any, repo: Any, *,
+                 titulo: str = "Categorías del tarifario", elementos: str = "servicios"):
+        super().__init__(master, titulo, ancho=560, alto=520)
         self._repo = repo
         alta = ctk.CTkFrame(self.form, fg_color="transparent")
         alta.grid(row=self._fila, column=0, columnspan=2, sticky="ew", padx=10, pady=(4, 6))
@@ -1154,12 +1183,13 @@ class DialogoCategorias(Dialogo):
 
         self.tabla = Tabla(self.form, [
             {"clave": "nombre", "titulo": "Categoría", "ancho": 300},
-            {"clave": "uso", "titulo": "Servicios", "ancho": 110, "anchor": "center"},
+            {"clave": "uso", "titulo": elementos.capitalize(), "ancho": 110,
+             "anchor": "center"},
         ], altura=8)
         self.tabla.grid(row=self._fila, column=0, columnspan=2, sticky="nsew",
                         padx=10, pady=6)
         self._fila += 1
-        self.nota("Sólo se puede quitar una categoría que no tenga servicios.")
+        self.nota(f"Sólo se puede quitar una categoría que no tenga {elementos}.")
         boton(self._pie, "Quitar seleccionada", self._quitar, color="peligro",
               ancho=170).pack(side="left")
         boton(self._pie, "Cerrar", self.cancelar, ancho=120).pack(side="right")

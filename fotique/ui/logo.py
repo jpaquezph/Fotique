@@ -68,8 +68,20 @@ class Logo(ctk.CTkFrame):
             ruta = RECURSOS / f"logo_{variante}_{self._escala}.png"
             if not ruta.exists():
                 return None
-            self._imagenes[variante] = tk.PhotoImage(master=self, file=str(ruta))
+            imagen = self._leer(ruta)
+            if imagen is None:
+                return None
+            self._imagenes[variante] = imagen
         return self._imagenes[variante]
+
+    def _leer(self, ruta: Path) -> Optional[tk.PhotoImage]:
+        """Decodifica el PNG; Tk falla a veces sin motivo y al reintentar anda."""
+        for _ in range(3):
+            try:
+                return tk.PhotoImage(master=self, file=str(ruta))
+            except tk.TclError:
+                continue
+        return None  # pragma: no cover - queda el nombre en texto
 
     def _pintar(self) -> None:
         blanco = self._siempre_blanco or modo_oscuro()

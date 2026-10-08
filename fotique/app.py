@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from typing import Optional, Union
 
-from .db import BaseDatos, cargar_datos_demo
+from .db import BaseDatos
 from .domain.models import Usuario
 from .ui import VentanaPrincipal
 from .ui.theme import aplicar_estilo_tabla, configurar_apariencia
@@ -48,15 +48,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     ruta = argv[0] if argv else None
     destino = Path(ruta) if ruta else ruta_base_datos()
-    primera_vez = not Path(destino).exists()
 
     app = Aplicacion(destino)
     configurar_apariencia(app.tema)
     aplicar_estilo_tabla()
-
-    # La primera instalación arranca con datos de ejemplo para poder explorar.
-    if primera_vez or app.repos.esta_vacio():
-        cargar_datos_demo(app.repos)
 
     try:
         ventana = VentanaPrincipal(app, acceso=True)

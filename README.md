@@ -15,7 +15,8 @@ Documento de partida: [`Relevamiento Fotique.md`](Relevamiento%20Fotique.md) (SR
 | `v1.0` | Tag de la versión 1.0.0, cerrada el 01/10/2026. |
 | `v1.2` | Tag de la versión 1.2.0 (04/10/2026). |
 | `v1.3` | Tag de la versión 1.3.0 (05/10/2026). |
-| `1.2`, `1.3`, … | Una rama por versión, con los cambios de esa versión. `1.4` es la que está en desarrollo. |
+| `v1.4` | Tag de la versión 1.4.0 (08/10/2026). |
+| `1.2`, `1.3`, … | Una rama por versión, con los cambios de esa versión. `1.5` es la que está en desarrollo. |
 
 ---
 
@@ -48,8 +49,9 @@ Si no se indica nada, la base vive en:
 
 Variables útiles: `FOTIQUE_DB` (ruta de la base), `FOTIQUE_DATA_DIR` (carpeta de datos).
 
-En la **primera ejecución** se carga un conjunto de datos de ejemplo para poder
-recorrer la aplicación; a partir de ahí nunca se vuelve a sembrar solo.
+La aplicación **arranca en blanco**: no se cargan datos de ejemplo. El estudio
+de muestra vive en `tests/datos_demo.py`, sólo para las pruebas y los scripts;
+no forma parte del ejecutable.
 
 ## Acceso y usuarios
 
@@ -148,8 +150,7 @@ Fotique/
 │   ├── db/
 │   │   ├── schema.sql       # esquema SQLite (RF + índices)
 │   │   ├── connection.py    # conexión, integridad, respaldos
-│   │   ├── repositories.py  # CRUD + consultas
-│   │   └── seed.py          # datos de ejemplo
+│   │   └── repositories.py  # CRUD + consultas
 │   └── ui/
 │       ├── theme.py         # paleta (pares claro/oscuro) y estilos ttk
 │       ├── acceso.py        # pantalla de ingreso, primer usuario y recuperación

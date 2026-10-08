@@ -9,7 +9,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fotique.app import Aplicacion  # noqa: E402
-from fotique.db import cargar_datos_demo  # noqa: E402
+from tests.datos_demo import cargar_datos_demo  # noqa: E402
 from fotique.domain.models import Evento, PlantillaContrato, Servicio  # noqa: E402
 from fotique.ui import VentanaPrincipal  # noqa: E402
 from fotique.ui.dialogs import (  # noqa: E402
@@ -64,7 +64,8 @@ def main() -> int:
 
     pruebas = [
         ("DialogoEquipo (nuevo)", lambda: DialogoEquipo(ventana)),
-        ("DialogoEquipo (editar)", lambda: DialogoEquipo(ventana, equipo)),
+        ("DialogoEquipo (editar)", lambda: DialogoEquipo(ventana, equipo,
+                                                         repos.equipos.categorias())),
         ("DialogoAsignar", lambda: DialogoAsignar(ventana, equipo,
                                                    repos.fotografos.listar())),
         ("DialogoDevolver", lambda: DialogoDevolver(ventana, equipo)),

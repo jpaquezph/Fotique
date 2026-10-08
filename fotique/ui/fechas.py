@@ -2,7 +2,8 @@
 
 El calendario se arma con widgets ``tk`` simples (abre al instante) y tiene
 tres niveles: días ➜ meses ➜ años. Un clic en el título sube de nivel, así que
-llegar a una fecha de hace varios años son tres clics: año, mes, día.
+llegar a una fecha de hace varios años son tres clics: año, mes, día. La grilla
+de años arranca en 2010, de modo que hoy se ve entera sin cambiar de página.
 """
 
 from __future__ import annotations
@@ -29,7 +30,9 @@ from .theme import (
 MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto",
          "Septiembre", "Octubre", "Noviembre", "Diciembre"]
 DIAS = ["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"]
-ANIOS_POR_PAGINA = 12
+ANIO_BASE = 2010          # primer año de la página que se ve hoy
+ANIOS_POR_PAGINA = 24
+COLUMNAS_ANIOS = 4
 
 
 def parsear(texto: str) -> Optional[date]:
@@ -159,12 +162,14 @@ class Calendario(tk.Toplevel):
                         lambda m=indice + 1: self._ir_a(mes=m), ancho=8, marcada=marcada)
 
     def _dibujar_anios(self) -> None:
-        inicio = self._anio - self._anio % ANIOS_POR_PAGINA
+        inicio = ANIO_BASE + (self._anio - ANIO_BASE) // ANIOS_POR_PAGINA * ANIOS_POR_PAGINA
         self._titulo.configure(text=f"{inicio} – {inicio + ANIOS_POR_PAGINA - 1}")
         for indice in range(ANIOS_POR_PAGINA):
             anio = inicio + indice
-            self._celda(indice // 3, indice % 3, str(anio),
-                        lambda a=anio: self._ir_a(anio=a), ancho=8,
+            if not 1 <= anio <= 9999:
+                continue
+            self._celda(indice // COLUMNAS_ANIOS, indice % COLUMNAS_ANIOS, str(anio),
+                        lambda a=anio: self._ir_a(anio=a), ancho=6,
                         marcada=self._elegida is not None and self._elegida.year == anio,
                         hoy=anio == date.today().year)
 

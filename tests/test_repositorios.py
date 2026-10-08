@@ -19,7 +19,7 @@ from fotique.domain import (
     Proyecto,
     TrabajoPendiente,
 )
-from fotique.db import cargar_datos_demo
+from tests.datos_demo import cargar_datos_demo
 
 
 def _alta_base(repos):

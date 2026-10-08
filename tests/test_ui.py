@@ -10,7 +10,7 @@ tkinter = pytest.importorskip("tkinter")  # noqa: N806
 @pytest.fixture(scope="module")
 def app(tmp_path_factory):
     from fotique.app import Aplicacion
-    from fotique.db import cargar_datos_demo
+    from tests.datos_demo import cargar_datos_demo
     from fotique.ui import VentanaPrincipal
     from fotique.ui.theme import aplicar_estilo_tabla, configurar_apariencia
 
@@ -103,14 +103,70 @@ def test_dialogo_de_equipo_extrae_los_campos(app):
     from fotique.ui.dialogs import DialogoEquipo
 
     equipo = app.repos.equipos.listar()[0]
-    dialogo = DialogoEquipo(app.ventana, equipo)
+    dialogo = DialogoEquipo(app.ventana, equipo, app.repos.equipos.categorias())
     dialogo.update()
     assert dialogo.texto("serie") == equipo.numero_serie
     dialogo._campos["marca"].delete(0, "end")
     dialogo._campos["marca"].insert(0, "Canon")
+    dialogo._campos["categoria"].set("Filtros")
     guardado = dialogo._guardar()
     assert guardado.marca == "Canon"
+    assert guardado.categoria == "Filtros"
     assert guardado.id == equipo.id
+    dialogo._campos["categoria"].set(DialogoEquipo.SIN_CATEGORIA)
+    assert dialogo._guardar().categoria == ""
+    dialogo.destroy()
+
+
+def test_la_ficha_del_equipo_administra_las_categorias(app):
+    from fotique.ui.dialogs import DialogoEquipo
+
+    abierto_sobre = []
+
+    def administrar(sobre):
+        abierto_sobre.append(sobre)
+        return ["Cámara", "Drones"]          # se quitó «Filtros» y se agregó «Drones»
+
+    dialogo = DialogoEquipo(app.ventana, None, ["Cámara", "Filtros"], administrar)
+    dialogo.update()
+    assert "Agregar / quitar" in _textos_de_botones(dialogo.form)
+    dialogo._campos["categoria"].set("Filtros")
+    dialogo._editar_categorias()
+    assert abierto_sobre == [dialogo]
+    assert dialogo._campos["categoria"].cget("values") == [
+        DialogoEquipo.SIN_CATEGORIA, "Cámara", "Drones"]
+    assert dialogo.texto("categoria") == DialogoEquipo.SIN_CATEGORIA  # la elegida ya no está
+    dialogo.destroy()
+
+    sin_boton = DialogoEquipo(app.ventana)
+    sin_boton.update()
+    assert "Agregar / quitar" not in _textos_de_botones(sin_boton.form)
+    sin_boton.destroy()
+
+
+def test_el_inventario_muestra_la_categoria_y_la_administra(app):
+    from fotique.ui.dialogs import DialogoCategorias
+
+    vista = app.ventana.vistas["equipos"]
+    vista.refrescar()
+    columnas = list(vista.tabla.tree["columns"])
+    assert "categoria" in columnas
+    indice = columnas.index("categoria")
+    valores = {vista.tabla.tree.item(i, "values")[indice]
+               for i in vista.tabla.tree.get_children()}
+    assert "Cámara" in valores and "—" in valores
+
+    dialogo = DialogoCategorias(vista, app.repos.equipos, titulo="Categorías de equipos",
+                                elementos="equipos")
+    dialogo.update()
+    dialogo._nueva.insert(0, "Drones")
+    dialogo._agregar()
+    assert "Drones" in app.repos.equipos.categorias()
+    dialogo.tabla.tree.selection_set(next(
+        i for i in dialogo.tabla.tree.get_children()
+        if dialogo.tabla.tree.item(i, "values")[0] == "Drones"))
+    dialogo._quitar()
+    assert "Drones" not in app.repos.equipos.categorias()
     dialogo.destroy()
 
 
@@ -153,7 +209,11 @@ def test_las_fechas_se_eligen_del_calendario(app):
     elegidas = []
     calendario = Calendario(dialogo, date(2026, 10, 4), elegidas.append)
     calendario._subir_nivel()            # días ➜ años
+    anios = [celda.cget("text") for celda in calendario._grilla.winfo_children()]
+    assert anios[0] == "2010" and "2026" in anios   # desde 2010 sin cambiar de página
     calendario._mover(-1)                # página anterior de años
+    assert calendario._titulo.cget("text") == "1986 – 2009"
+    calendario._mover(1)
     calendario._ir_a(anio=2011)          # ➜ meses
     calendario._ir_a(mes=3)              # ➜ días de marzo de 2011
     assert (calendario._anio, calendario._mes, calendario._modo) == (2011, 3, "dias")

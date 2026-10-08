@@ -98,6 +98,7 @@ class Equipo:
     fecha_service_proximo: Optional[date] = None
     fotografo_actual: Optional[Fotografo] = None
     notas: str = ""
+    categoria: str = ""
 
     def __post_init__(self) -> None:
         self.estado = EstadoEquipo(self.estado)

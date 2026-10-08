@@ -31,8 +31,13 @@ CREATE TABLE IF NOT EXISTS equipos (
                             CHECK (estado IN ('En stock', 'En uso')),
     fotografo_id        INTEGER REFERENCES fotografos (id) ON DELETE RESTRICT,
     notas               TEXT    NOT NULL DEFAULT '',
+    categoria           TEXT    NOT NULL DEFAULT '',
     -- Si está "En uso" el fotógrafo responsable es obligatorio.
     CHECK (estado = 'En stock' OR fotografo_id IS NOT NULL)
+);
+
+CREATE TABLE IF NOT EXISTS categorias_equipo (
+    nombre TEXT PRIMARY KEY COLLATE NOCASE
 );
 
 CREATE TABLE IF NOT EXISTS historial_asignaciones (

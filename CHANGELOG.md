@@ -3,13 +3,18 @@
 Todo lo notable de Fotique se documenta acá.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 
-## [1.4.0] — en desarrollo
+## [1.4.0] — 2026-10-08
 
 ### Agregado
 
 - **Logo de Fotique** en la barra lateral y en la pantalla de ingreso (negro en
   modo claro, blanco en modo oscuro) e **ícono propio** en las ventanas, la
   barra de tareas y el ejecutable.
+- **Categoría de los equipos**: nueva columna en el inventario y campo en la
+  ficha de cada equipo. La lista arranca con Cámara, Iluminación, Accesorio,
+  Mantenimiento y Filtros, y se amplía o recorta con el botón «Categorías»
+  del inventario o con «Agregar / quitar» en la misma ficha del equipo;
+  la búsqueda también encuentra por categoría.
 
 ### Cambiado
 
@@ -17,7 +22,17 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
   ejecutable `Fotique.exe`, variables `FOTIQUE_DB` y `FOTIQUE_DATA_DIR`. La
   carpeta de datos anterior (`%APPDATA%\Fotia\fotia.db`) se renombra sola a
   `%APPDATA%\Fotique\fotique.db` en el primer arranque.
+- **Calendario de fechas**: la grilla de años va de 2010 a 2033 en una sola
+  página (antes mostraba 12 años y había que retroceder para llegar a 2010).
+- **La aplicación arranca en blanco**: ya no se cargan datos de ejemplo en la
+  primera ejecución ni cuando la base queda vacía. El estudio de muestra pasa
+  a `tests/datos_demo.py` y deja de viajar en el ejecutable.
 - El texto bajo el logo pasa a «FOTIQUE · GESTIÓN PROFESIONAL».
+
+### Corregido
+
+- El logo se vuelve a leer si Tk falla al decodificar el PNG (error esporádico
+  y sin mensaje); antes ese fallo podía cortar la pantalla de ingreso.
 
 ## [1.3.0] — 2026-10-05
 

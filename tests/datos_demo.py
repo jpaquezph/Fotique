@@ -1,10 +1,10 @@
-"""Datos de ejemplo para la primera carga de Fotique (demo)."""
+"""Estudio fotográfico de ejemplo para las pruebas y los scripts (no se empaqueta)."""
 
 from __future__ import annotations
 
 from datetime import date, timedelta
 
-from ..domain.models import (
+from fotique.domain.models import (
     Cliente,
     Contrato,
     Equipo,
@@ -18,7 +18,7 @@ from ..domain.models import (
     Servicio,
     TrabajoPendiente,
 )
-from ..domain.services import PLANTILLA_CONTRATO_BASE
+from fotique.domain.services import PLANTILLA_CONTRATO_BASE
 
 MESES = {
     "enero": 1, "febrero": 2, "marzo": 3, "abril": 4, "mayo": 5, "junio": 6,
@@ -30,11 +30,6 @@ MESES = {
 def _en(dias: int) -> date:
     """Fecha relativa a hoy (útil para ver alertas de service y entregas)."""
     return date.today() + timedelta(days=dias)
-
-
-def datos_demo_cargados(repos) -> bool:
-    """``True`` si la base ya tiene contenido (no hace falta sembrar)."""
-    return not repos.esta_vacio()
 
 
 def cargar_datos_demo(repos) -> dict[str, int]:
@@ -59,13 +54,14 @@ def cargar_datos_demo(repos) -> dict[str, int]:
 
     # -- Módulo A: inventario --------------------------------------------- #
     equipos = [
-        Equipo(numero_serie="SN123456", marca="Sony", modelo="A7 IV",
+        Equipo(numero_serie="SN123456", marca="Sony", modelo="A7 IV", categoria="Cámara",
                fecha_adquisicion=_en(-820), fecha_service_ultimo=_en(-380),
                fecha_service_proximo=_en(-15)),
-        Equipo(numero_serie="SN223344", marca="Sony", modelo="A7 IV",
+        Equipo(numero_serie="SN223344", marca="Sony", modelo="A7 IV", categoria="Cámara",
                fecha_adquisicion=_en(-600), fecha_service_ultimo=_en(-200),
                fecha_service_proximo=_en(18)),
         Equipo(numero_serie="SN998877", marca="Canon", modelo="R6 Mark II",
+               categoria="Cámara",
                fecha_adquisicion=_en(-420), fecha_service_ultimo=_en(-160),
                fecha_service_proximo=_en(120)),
         Equipo(numero_serie="SN556677", marca="Nikon", modelo="Z6 III",
@@ -75,8 +71,10 @@ def cargar_datos_demo(repos) -> dict[str, int]:
         Equipo(numero_serie="LEN247001", marca="Sony", modelo="24-70mm f/2.8",
                fecha_adquisicion=_en(-700), fecha_service_proximo=_en(9)),
         Equipo(numero_serie="FLASH900X", marca="Godox", modelo="V1-S",
+               categoria="Iluminación",
                fecha_adquisicion=_en(-250)),
         Equipo(numero_serie="TRIPD001", marca="Manfrotto", modelo="055XPRO3",
+               categoria="Accesorio",
                fecha_adquisicion=_en(-1100), notas="Incluye cabeza 496."),
     ]
     for equipo in equipos:

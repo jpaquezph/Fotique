@@ -9,6 +9,7 @@ import customtkinter as ctk
 from ...domain.models import EstadoEquipo, EstadoService
 from ..dialogs import (
     DialogoAsignar,
+    DialogoCategorias,
     DialogoDevolver,
     DialogoEquipo,
     DialogoHistorialEquipos,
@@ -33,12 +34,18 @@ class VistaEquipos(VistaBase):
         barra = ctk.CTkFrame(contenedor, fg_color="transparent")
         barra.grid(row=0, column=0, sticky="ew", pady=(0, 8))
         boton(barra, "Nuevo equipo", self._nuevo).pack(side="left", padx=(0, 6))
-        boton(barra, "Editar", self._editar).pack(side="left", padx=(0, 6))
-        boton(barra, "Asignar", self._asignar, color="exito").pack(side="left", padx=(0, 6))
-        boton(barra, "Devolver", self._devolver, color="aviso").pack(side="left", padx=(0, 6))
-        boton_secundario(barra, "Historial", self._historial).pack(side="left", padx=(0, 6))
+        # Botones angostos: con «Categorías» la barra ya no deja lugar al buscador.
+        boton(barra, "Editar", self._editar, ancho=92).pack(side="left", padx=(0, 6))
+        boton(barra, "Asignar", self._asignar, color="exito", ancho=92).pack(
+            side="left", padx=(0, 6))
+        boton(barra, "Devolver", self._devolver, color="aviso", ancho=92).pack(
+            side="left", padx=(0, 6))
+        boton_secundario(barra, "Historial", self._historial, ancho=92).pack(
+            side="left", padx=(0, 6))
+        boton_secundario(barra, "Categorías", self._categorias, ancho=100).pack(
+            side="left", padx=(0, 6))
         if self.app.es_admin:  # dar de baja equipos es sólo para administradores
-            boton(barra, "Eliminar", self._eliminar, color="peligro").pack(
+            boton(barra, "Eliminar", self._eliminar, color="peligro", ancho=92).pack(
                 side="left", padx=(0, 6))
 
         self._alertas_var = ctk.StringVar(value="Servicio: todos")
@@ -49,19 +56,20 @@ class VistaEquipos(VistaBase):
         )
         menu.pack(side="left", padx=(12, 6))
 
-        self._busqueda = ctk.CTkEntry(barra, width=260, placeholder_text="Buscar serie, marca, modelo o fotógrafo…")
+        self._busqueda = ctk.CTkEntry(barra, width=260, placeholder_text="Buscar serie, marca, categoría o fotógrafo…")
         self._busqueda.pack(side="right")
         self._busqueda.bind("<KeyRelease>", self.refrescar_diferido)
 
         columnas = [
             {"clave": "serie", "titulo": "N° de serie", "ancho": 130},
             {"clave": "equipo", "titulo": "Marca / Modelo", "ancho": 170},
+            {"clave": "categoria", "titulo": "Categoría", "ancho": 115},
             {"clave": "estado", "titulo": "Estado", "ancho": 90, "anchor": "center"},
             {"clave": "fotografo", "titulo": "Fotógrafo", "ancho": 150},
             {"clave": "adquisicion", "titulo": "Adquisición", "ancho": 105, "anchor": "center"},
             {"clave": "service", "titulo": "Próximo service", "ancho": 115, "anchor": "center"},
             {"clave": "alerta", "titulo": "Alerta", "ancho": 120, "anchor": "center"},
-            {"clave": "notas", "titulo": "Notas", "ancho": 240},
+            {"clave": "notas", "titulo": "Notas", "ancho": 180},
         ]
         self.tabla = Tabla(contenedor, columnas, doble_click=self._historial, altura=4)
         self.tabla.grid(row=1, column=0, sticky="nsew")
@@ -93,6 +101,7 @@ class VistaEquipos(VistaBase):
             filas.append([
                 equipo.numero_serie or "—",
                 equipo.descripcion,
+                equipo.categoria or "—",
                 str(equipo.estado),
                 equipo.fotografo_actual.nombre_completo if equipo.fotografo_actual else "—",
                 _fecha_o_guion(equipo.fecha_adquisicion),
@@ -118,8 +127,16 @@ class VistaEquipos(VistaBase):
             self.advertir("Sin selección", "Elija un equipo en la tabla.")
         return equipo
 
+    def _categorias(self, sobre=None) -> list[str]:
+        """Alta y baja de categorías; ``sobre`` es la ficha desde la que se abre."""
+        DialogoCategorias(sobre or self, self.repos.equipos,
+                          titulo="Categorías de equipos", elementos="equipos").mostrar()
+        self.refrescar()
+        return self.repos.equipos.categorias()
+
     def _nuevo(self) -> None:
-        equipo = DialogoEquipo(self).mostrar()
+        equipo = DialogoEquipo(self, categorias=self.repos.equipos.categorias(),
+                               administrar=self._categorias).mostrar()
         if equipo is None:
             return
         self.ejecutar(lambda: self.repos.equipos.crear(equipo))
@@ -128,7 +145,8 @@ class VistaEquipos(VistaBase):
         equipo = self._seleccion()
         if equipo is None:
             return
-        editado = DialogoEquipo(self, equipo).mostrar()
+        editado = DialogoEquipo(self, equipo, self.repos.equipos.categorias(),
+                                self._categorias).mostrar()
         if editado is None:
             return
         self.ejecutar(lambda: self.repos.equipos.actualizar(editado))
