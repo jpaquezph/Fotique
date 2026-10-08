@@ -96,15 +96,22 @@ class Tabla(ctk.CTkFrame):
         altura: int = 12,
         estilo: str = "Fotique.Treeview",
         lineas_verticales: bool = True,
+        al_reordenar: Optional[Callable[[], None]] = None,
     ):
+        """``al_reordenar`` habilita mover las columnas arrastrando el encabezado
+        y avisa cada vez que el usuario lo hace."""
         super().__init__(master, fg_color=FONDO, border_width=1,
                          border_color=BORDE, corner_radius=12)
         self.columnas = list(columnas)
         self._objetos: dict[str, Any] = {}
         self._doble_click = doble_click
         self._lineas_verticales = lineas_verticales
+        self._al_reordenar = al_reordenar
+        self._arrastrada: Optional[str] = None
 
         claves = [c["clave"] for c in self.columnas]
+        self._orden = list(claves)
+        self._ocultas: set[str] = set()
         self.tree = ttk.Treeview(
             self,
             columns=claves,
@@ -152,6 +159,60 @@ class Tabla(ctk.CTkFrame):
         # al arrastrar el borde de un encabezado cambia el ancho de la columna
         self.tree.bind("<B1-Motion>", self._pedir_trazo, add="+")
         self.tree.bind("<ButtonRelease-1>", self._pedir_trazo, add="+")
+        if al_reordenar is not None:
+            self.tree.bind("<ButtonPress-1>", self._tomar_encabezado, add="+")
+            self.tree.bind("<B1-Motion>", self._arrastrar_encabezado, add="+")
+            self.tree.bind("<ButtonRelease-1>", self._soltar_encabezado, add="+")
+
+    # -- orden y visibilidad de las columnas ------------------------------- #
+    def orden_columnas(self) -> list[str]:
+        """Claves de todas las columnas en el orden elegido (incluye las ocultas)."""
+        return list(self._orden)
+
+    def columnas_ocultas(self) -> list[str]:
+        return [c for c in self._orden if c in self._ocultas]
+
+    def columnas_visibles(self) -> list[str]:
+        return [c for c in self._orden if c not in self._ocultas]
+
+    def ordenar_columnas(self, orden: Sequence[str], ocultas: Sequence[str] = ()) -> None:
+        """Fija el orden y qué columnas se ocultan. Las claves desconocidas se
+        ignoran, las que falten van al final y siempre queda una a la vista."""
+        claves = [c["clave"] for c in self.columnas]
+        elegidas = [c for c in dict.fromkeys(orden) if c in claves]
+        self._orden = elegidas + [c for c in claves if c not in elegidas]
+        self._ocultas = {c for c in ocultas if c in claves}
+        if not self.columnas_visibles():
+            self._ocultas.clear()
+        self.tree.configure(displaycolumns=self.columnas_visibles())
+        self._pedir_trazo()
+
+    def _encabezado_en(self, evento) -> Optional[str]:
+        if self.tree.identify_region(evento.x, evento.y) != "heading":
+            return None
+        indice = int(self.tree.identify_column(evento.x).lstrip("#") or 0) - 1
+        visibles = self.columnas_visibles()
+        return visibles[indice] if 0 <= indice < len(visibles) else None
+
+    def _tomar_encabezado(self, evento) -> None:
+        self._arrastrada = self._encabezado_en(evento)
+
+    def _arrastrar_encabezado(self, _evento) -> None:
+        if self._arrastrada is not None:
+            self.tree.configure(cursor="fleur")
+
+    def _soltar_encabezado(self, evento) -> None:
+        arrastrada, self._arrastrada = self._arrastrada, None
+        self.tree.configure(cursor="")
+        destino = self._encabezado_en(evento)
+        if arrastrada is None or destino is None or destino == arrastrada:
+            return
+        orden = self.orden_columnas()
+        posicion = orden.index(destino)
+        orden.remove(arrastrada)
+        orden.insert(posicion, arrastrada)
+        self.ordenar_columnas(orden, self._ocultas)
+        self._al_reordenar()
 
     def _colorear_etiquetas(self) -> None:
         for nombre, color in colores_etiquetas().items():
@@ -185,7 +246,7 @@ class Tabla(ctk.CTkFrame):
         color = colores_tema()["borde"]
         ancho, alto = self.tree.winfo_width(), self.tree.winfo_height()
 
-        anchos = [self.tree.column(c["clave"], "width") for c in self.columnas]
+        anchos = [self.tree.column(c, "width") for c in self.columnas_visibles()]
         x = -round(self.tree.xview()[0] * sum(anchos))
         usadas = 0
         for ancho_columna in anchos[:-1] if self._lineas_verticales else ():

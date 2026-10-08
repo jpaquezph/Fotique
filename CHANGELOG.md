@@ -10,6 +10,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 - **Producto de los equipos**: nueva columna «Producto» en el inventario y
   campo en la ficha de cada equipo, para anotar qué es (cámara, lente,
   flash…). Es opcional y la búsqueda también encuentra por producto.
+- **Columnas del inventario a medida**: se reordenan arrastrando el encabezado
+  o con el botón «Columnas» (al pie de la tabla), que también permite
+  ocultarlas y volver al orden original. La elección queda guardada.
 
 ## [1.4.0] — 2026-10-08
 

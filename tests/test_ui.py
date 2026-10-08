@@ -147,6 +147,64 @@ def test_la_ficha_del_equipo_administra_las_categorias(app):
     sin_boton.destroy()
 
 
+def test_el_inventario_ordena_y_oculta_sus_columnas(app):
+    import json
+    from types import SimpleNamespace
+
+    from fotique.ui.dialogs import DialogoColumnas
+    from fotique.ui.views.equipos import CLAVE_COLUMNAS
+
+    app.ventana.mostrar("equipos")
+    app.ventana.update()
+    vista = app.ventana.vistas["equipos"]
+    tabla = vista.tabla
+    inicial = tabla.orden_columnas()
+    assert tabla.columnas_visibles() == inicial
+
+    # desde el diálogo: «Producto» baja un lugar y «Notas» se oculta
+    dialogo = DialogoColumnas(vista, [(c["clave"], c["titulo"]) for c in tabla.columnas],
+                              inicial)
+    dialogo.update()
+    dialogo._mover(inicial.index("producto"), 1)
+    dialogo._visible["notas"].set(False)
+    orden, ocultas = dialogo._guardar()
+    for variable in dialogo._visible.values():
+        variable.set(False)
+    with pytest.raises(Exception):
+        dialogo._guardar()                      # no se puede ocultar todo
+    dialogo._restablecer()
+    assert dialogo._guardar() == (inicial, [])
+    dialogo.destroy()
+
+    tabla.ordenar_columnas(orden, ocultas)
+    vista._guardar_columnas()
+    assert orden.index("producto") == inicial.index("producto") + 1
+    assert list(tabla.tree["displaycolumns"]) == [c for c in orden if c != "notas"]
+    assert list(tabla.tree["columns"]) == inicial   # los datos no cambian de lugar
+
+    # arrastrando el encabezado: la primera columna pasa al lugar de la tercera
+    app.ventana.update()
+    visibles = tabla.columnas_visibles()
+    anchos = [tabla.tree.column(c, "width") for c in visibles]
+    tabla._tomar_encabezado(SimpleNamespace(x=anchos[0] // 2, y=8))
+    tabla._soltar_encabezado(SimpleNamespace(x=anchos[0] + anchos[1] + 10, y=8))
+    assert tabla.columnas_visibles() == [visibles[1], visibles[2], visibles[0]] + visibles[3:]
+    guardado = json.loads(app.repos.config(CLAVE_COLUMNAS))
+    assert guardado == {"orden": tabla.orden_columnas(), "ocultas": ["notas"]}
+
+    # lo guardado se respeta al volver a armar la tabla, y lo inválido se ignora
+    tabla.ordenar_columnas([], [])
+    vista._cargar_columnas()
+    assert tabla.orden_columnas() == guardado["orden"]
+    assert tabla.columnas_ocultas() == ["notas"]
+    tabla.ordenar_columnas(["no-existe", "notas"], inicial)
+    assert tabla.orden_columnas() == ["notas"] + [c for c in inicial if c != "notas"]
+    assert tabla.columnas_ocultas() == []        # siempre queda algo a la vista
+
+    tabla.ordenar_columnas(inicial)
+    vista._guardar_columnas()
+
+
 def test_el_inventario_muestra_la_categoria_y_la_administra(app):
     from fotique.ui.dialogs import DialogoCategorias
 
