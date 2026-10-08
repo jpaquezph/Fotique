@@ -3,6 +3,14 @@
 Todo lo notable de Fotique se documenta acá.
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 
+## [1.5.0] — en desarrollo
+
+### Agregado
+
+- **Producto de los equipos**: nueva columna «Producto» en el inventario y
+  campo en la ficha de cada equipo, para anotar qué es (cámara, lente,
+  flash…). Es opcional y la búsqueda también encuentra por producto.
+
 ## [1.4.0] — 2026-10-08
 
 ### Agregado

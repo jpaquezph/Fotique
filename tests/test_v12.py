@@ -258,6 +258,7 @@ def test_migra_una_base_de_la_version_anterior(tmp_path):
             "Álbum", EstadoTrabajo.EN_EDICION, "")
         assert base.repos.proyectos.listar()[0].tipo == ""
         assert {e.categoria for e in equipos} == {""}
+        assert {e.producto for e in equipos} == {""}
         assert "Cámara" in base.repos.equipos.categorias()
 
         # lo que la versión anterior rechazaba ahora se puede guardar
@@ -275,6 +276,22 @@ def test_migra_una_base_de_la_version_anterior(tmp_path):
         assert len(base.repos.equipos.listar()) == 3
     finally:
         base.cerrar()
+
+
+# -- producto de los equipos -------------------------------------------------- #
+
+
+def test_el_producto_del_equipo_se_guarda_y_se_busca(repos):
+    equipos = repos.equipos
+    lente = equipos.crear(Equipo(marca="Sigma", modelo="85mm f/1.4", producto=" Lente fijo "))
+    sin = equipos.crear(Equipo(marca="Godox", modelo="V1"))
+    assert equipos.obtener(lente.id).producto == "Lente fijo"
+    assert equipos.obtener(sin.id).producto == ""
+    assert [e.id for e in equipos.listar(texto="lente")] == [lente.id]
+
+    sin.producto = "Flash"
+    equipos.actualizar(sin)
+    assert equipos.obtener(sin.id).producto == "Flash"
 
 
 # -- categorías de equipos --------------------------------------------------- #

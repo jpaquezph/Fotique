@@ -56,12 +56,13 @@ class VistaEquipos(VistaBase):
         )
         menu.pack(side="left", padx=(12, 6))
 
-        self._busqueda = ctk.CTkEntry(barra, width=260, placeholder_text="Buscar serie, marca, categoría o fotógrafo…")
+        self._busqueda = ctk.CTkEntry(barra, width=260, placeholder_text="Buscar serie, producto, marca, categoría…")
         self._busqueda.pack(side="right")
         self._busqueda.bind("<KeyRelease>", self.refrescar_diferido)
 
         columnas = [
             {"clave": "serie", "titulo": "N° de serie", "ancho": 130},
+            {"clave": "producto", "titulo": "Producto", "ancho": 120},
             {"clave": "equipo", "titulo": "Marca / Modelo", "ancho": 170},
             {"clave": "categoria", "titulo": "Categoría", "ancho": 115},
             {"clave": "estado", "titulo": "Estado", "ancho": 90, "anchor": "center"},
@@ -100,6 +101,7 @@ class VistaEquipos(VistaBase):
             disponible = equipo.estado == EstadoEquipo.EN_STOCK
             filas.append([
                 equipo.numero_serie or "—",
+                equipo.producto or "—",
                 equipo.descripcion,
                 equipo.categoria or "—",
                 str(equipo.estado),

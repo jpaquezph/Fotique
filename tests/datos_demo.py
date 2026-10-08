@@ -55,6 +55,7 @@ def cargar_datos_demo(repos) -> dict[str, int]:
     # -- Módulo A: inventario --------------------------------------------- #
     equipos = [
         Equipo(numero_serie="SN123456", marca="Sony", modelo="A7 IV", categoria="Cámara",
+               producto="Cámara mirrorless",
                fecha_adquisicion=_en(-820), fecha_service_ultimo=_en(-380),
                fecha_service_proximo=_en(-15)),
         Equipo(numero_serie="SN223344", marca="Sony", modelo="A7 IV", categoria="Cámara",

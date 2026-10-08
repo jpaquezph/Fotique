@@ -99,6 +99,7 @@ class Equipo:
     fotografo_actual: Optional[Fotografo] = None
     notas: str = ""
     categoria: str = ""
+    producto: str = ""
 
     def __post_init__(self) -> None:
         self.estado = EstadoEquipo(self.estado)

@@ -102,6 +102,7 @@ def _map_equipo(row: sqlite3.Row) -> Equipo:
         fotografo_actual=fotografo,
         notas=row["notas"] or "",
         categoria=row["categoria"] or "",
+        producto=row["producto"] or "",
     )
 
 
@@ -304,11 +305,11 @@ class EquipoRepo:
         if texto.strip():
             condiciones.append(
                 "(COALESCE(e.numero_serie, '') LIKE ? OR e.marca LIKE ? OR e.modelo LIKE ? "
-                "OR e.categoria LIKE ? "
+                "OR e.categoria LIKE ? OR e.producto LIKE ? "
                 "OR COALESCE(f.nombre, '') LIKE ? OR COALESCE(f.apellido, '') LIKE ?)"
             )
             patron = f"%{texto.strip()}%"
-            params.extend([patron] * 6)
+            params.extend([patron] * 7)
         if condiciones:
             sql += " WHERE " + " AND ".join(condiciones)
         sql += " ORDER BY e.estado DESC, e.marca, e.modelo"
@@ -331,7 +332,7 @@ class EquipoRepo:
             cur = self.conn.execute(
                 "INSERT INTO equipos (numero_serie, marca, modelo, fecha_adquisicion, "
                 "fecha_service_ultimo, fecha_service_proximo, estado, fotografo_id, notas, "
-                "categoria) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "categoria, producto) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     equipo.numero_serie.strip() or None,
                     equipo.marca.strip(),
@@ -343,6 +344,7 @@ class EquipoRepo:
                     None,
                     equipo.notas or "",
                     equipo.categoria.strip(),
+                    equipo.producto.strip(),
                 ),
             )
         except sqlite3.IntegrityError as exc:
@@ -365,7 +367,7 @@ class EquipoRepo:
             self.conn.execute(
                 "UPDATE equipos SET numero_serie=?, marca=?, modelo=?, "
                 "fecha_adquisicion=?, fecha_service_ultimo=?, fecha_service_proximo=?, "
-                "estado=?, fotografo_id=?, notas=?, categoria=? WHERE id=?",
+                "estado=?, fotografo_id=?, notas=?, categoria=?, producto=? WHERE id=?",
                 (
                     equipo.numero_serie.strip() or None,
                     equipo.marca.strip(),
@@ -377,6 +379,7 @@ class EquipoRepo:
                     equipo.fotografo_actual.id if equipo.fotografo_actual else None,
                     equipo.notas or "",
                     equipo.categoria.strip(),
+                    equipo.producto.strip(),
                     equipo.id,
                 ),
             )

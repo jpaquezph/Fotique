@@ -89,6 +89,9 @@ def _preparar_esquema(conn: sqlite3.Connection, destino: str) -> None:
     # y la lista se carga una sola vez (lo que se quite después no vuelve).
     if "categoria" not in _columnas(conn, "equipos"):
         conn.execute("ALTER TABLE equipos ADD COLUMN categoria TEXT NOT NULL DEFAULT ''")
+    # El producto (qué es el equipo: cámara, lente, flash…) llegó en la 1.5.
+    if "producto" not in _columnas(conn, "equipos"):
+        conn.execute("ALTER TABLE equipos ADD COLUMN producto TEXT NOT NULL DEFAULT ''")
     if sin_categorias_equipo:
         conn.executemany(
             "INSERT OR IGNORE INTO categorias_equipo (nombre) VALUES (?)",

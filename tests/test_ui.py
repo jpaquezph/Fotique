@@ -109,9 +109,12 @@ def test_dialogo_de_equipo_extrae_los_campos(app):
     dialogo._campos["marca"].delete(0, "end")
     dialogo._campos["marca"].insert(0, "Canon")
     dialogo._campos["categoria"].set("Filtros")
+    dialogo._campos["producto"].delete(0, "end")
+    dialogo._campos["producto"].insert(0, "Filtro ND")
     guardado = dialogo._guardar()
     assert guardado.marca == "Canon"
     assert guardado.categoria == "Filtros"
+    assert guardado.producto == "Filtro ND"
     assert guardado.id == equipo.id
     dialogo._campos["categoria"].set(DialogoEquipo.SIN_CATEGORIA)
     assert dialogo._guardar().categoria == ""
@@ -155,6 +158,9 @@ def test_el_inventario_muestra_la_categoria_y_la_administra(app):
     valores = {vista.tabla.tree.item(i, "values")[indice]
                for i in vista.tabla.tree.get_children()}
     assert "Cámara" in valores and "—" in valores
+    productos = {vista.tabla.tree.item(i, "values")[columnas.index("producto")]
+                 for i in vista.tabla.tree.get_children()}
+    assert "Cámara mirrorless" in productos and "—" in productos
 
     dialogo = DialogoCategorias(vista, app.repos.equipos, titulo="Categorías de equipos",
                                 elementos="equipos")

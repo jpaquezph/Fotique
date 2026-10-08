@@ -58,7 +58,7 @@ class DialogoEquipo(Dialogo):
         """``administrar`` abre el alta y baja de categorías sobre este diálogo
         y devuelve la lista actualizada; sin él no se muestra el botón."""
         super().__init__(master, "Editar equipo" if equipo else "Nuevo equipo",
-                         ancho=600, alto=640)
+                         ancho=600, alto=680)
         e = equipo
         self._equipo = e
         self._administrar = administrar
@@ -75,6 +75,8 @@ class DialogoEquipo(Dialogo):
                                              padx=(218, 10), pady=6)
         self.campo_texto("serie", "Número de serie", e.numero_serie if e else "",
                          "Opcional")
+        self.campo_texto("producto", "Producto", e.producto if e else "",
+                         "Cámara, lente, flash…")
         self.campo_texto("marca", "Marca *", e.marca if e else "", "Sony")
         self.campo_texto("modelo", "Modelo *", e.modelo if e else "", "A7 IV")
         self.campo_fecha("adquisicion", "Fecha de adquisición",
@@ -112,6 +114,7 @@ class DialogoEquipo(Dialogo):
         equipo.numero_serie, equipo.marca, equipo.modelo = serie, marca, modelo
         categoria = self.texto("categoria")
         equipo.categoria = "" if categoria == self.SIN_CATEGORIA else categoria
+        equipo.producto = self.texto("producto")
         equipo.fecha_adquisicion = self.fecha("adquisicion")
         equipo.fecha_service_ultimo = self.fecha("service_ultimo")
         equipo.fecha_service_proximo = self.fecha("service_proximo")
