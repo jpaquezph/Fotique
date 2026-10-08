@@ -27,7 +27,7 @@ class VistaBase(ctk.CTkFrame):
         self.grid_columnconfigure(0, weight=1)
 
         cabecera = ctk.CTkFrame(self, fg_color="transparent")
-        cabecera.grid(row=0, column=0, sticky="ew", padx=4, pady=(4, 10))
+        cabecera.grid(row=0, column=0, sticky="ew", padx=4, pady=(2, 14))
         cabecera.grid_columnconfigure(0, weight=1)
         ctk.CTkLabel(cabecera, text=self.titulo, font=FUENTE_TITULO,
                      text_color=TEXTO, anchor="w").grid(

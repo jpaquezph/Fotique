@@ -10,12 +10,22 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 - **Producto de los equipos**: nueva columna «Producto» en el inventario y
   campo en la ficha de cada equipo, para anotar qué es (cámara, lente,
   flash…). Es opcional y la búsqueda también encuentra por producto.
+- **La primera cuenta también es fotógrafo**: al crear la cuenta de
+  administrador en una base nueva se la da de alta como fotógrafo, vinculada
+  a esa cuenta.
 - **Columnas a medida en todas las pantallas**: se reordenan arrastrando el
   encabezado o con el botón «Columnas» (al pie de cada tabla, junto a la barra
   de desplazamiento), que también permite ocultarlas y volver al orden
   original. Cada tabla guarda su propia elección.
 
 ### Cambiado
+
+- **Apariencia renovada**: neutros cálidos, esquinas más redondeadas, títulos
+  de tarjeta con línea divisoria y botones de color pleno y más vivo.
+- **Nombres de las pantallas**: «Panel de control» pasa a llamarse «Resumen
+  general» y el anterior «Resumen general» es ahora «Resumen administrativo».
+- En el inventario del resumen general cada equipo se muestra por su
+  «Producto» (o por marca y modelo si no lo tiene cargado).
 
 - **El cliente del proyecto es opcional**: se puede cargar un proyecto sin
   haber registrado antes un cliente («— Sin cliente —») y asignárselo después.

@@ -543,6 +543,9 @@ def test_acceso_primer_usuario_ingreso_y_roles(app, monkeypatch):
     assert app.usuario.es_admin
     assert "usuarios" in ventana.vistas
     assert ventana.clave_activa == "panel"
+    # la primera cuenta queda cargada también como fotógrafo, y vinculada
+    fotografo = app.repos.fotografos.obtener(app.usuario.fotografo_id)
+    assert (fotografo.nombre, fotografo.apellido) == ("Jorge", "Páquez")
 
     # contraseña incorrecta y luego ingreso de un operador
     app.repos.usuarios.crear(Usuario(usuario="marina"), "marina2026")

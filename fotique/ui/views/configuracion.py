@@ -5,7 +5,16 @@ from __future__ import annotations
 import customtkinter as ctk
 
 from ... import __version__
-from ..theme import BORDE, FONDO, GRIS_TEXTO, TEMAS
+from ..theme import (
+    BORDE,
+    FONDO,
+    FUENTE_PEQUE,
+    FUENTE_SUBTITULO,
+    GRIS_TEXTO,
+    RADIO,
+    SEMINEGRITA,
+    TEMAS,
+)
 from ..widgets import boton, boton_secundario
 from .base import VistaBase
 from .respaldos import VistaRespaldos
@@ -37,19 +46,21 @@ class VistaConfiguracion(VistaBase):
         self.mostrar_seccion(refrescar=False)
 
     def _tarjeta(self, master, columna: int, titulo: str) -> ctk.CTkFrame:
-        tarjeta = ctk.CTkFrame(master, corner_radius=10, fg_color=FONDO,
+        tarjeta = ctk.CTkFrame(master, corner_radius=RADIO, fg_color=FONDO,
                                border_width=1, border_color=BORDE)
         tarjeta.grid(row=0, column=columna, sticky="nsew",
-                     padx=(0 if columna == 0 else 10, 0))
-        ctk.CTkLabel(tarjeta, text=titulo, font=("Segoe UI", 13, "bold"),
+                     padx=(0 if columna == 0 else 12, 0))
+        ctk.CTkLabel(tarjeta, text=titulo, font=FUENTE_SUBTITULO,
                      anchor="w").pack(fill="x", padx=16, pady=(14, 8))
+        ctk.CTkFrame(tarjeta, height=2, corner_radius=0, fg_color=BORDE).pack(
+            fill="x", padx=16, pady=(0, 10))
         return tarjeta
 
     def _dato(self, master, etiqueta: str) -> ctk.CTkLabel:
-        ctk.CTkLabel(master, text=etiqueta, font=("Segoe UI", 10),
+        ctk.CTkLabel(master, text=etiqueta, font=FUENTE_PEQUE,
                      text_color=GRIS_TEXTO, anchor="w", height=16).pack(
             fill="x", padx=16)
-        valor = ctk.CTkLabel(master, text="—", font=("Segoe UI", 12, "bold"),
+        valor = ctk.CTkLabel(master, text="—", font=(SEMINEGRITA, 12),
                              anchor="w", wraplength=260, justify="left")
         valor.pack(fill="x", padx=16, pady=(0, 8))
         return valor
@@ -69,14 +80,14 @@ class VistaConfiguracion(VistaBase):
         self._editar.pack(anchor="w", padx=16, pady=(6, 16))
 
         apariencia = self._tarjeta(panel, 1, "Apariencia")
-        ctk.CTkLabel(apariencia, text="Modo de color", font=("Segoe UI", 10),
+        ctk.CTkLabel(apariencia, text="Modo de color", font=FUENTE_PEQUE,
                      text_color=GRIS_TEXTO, anchor="w", height=16).pack(fill="x", padx=16)
         self._tema = ctk.StringVar(value=self.app.tema)
         ctk.CTkOptionMenu(apariencia, values=list(TEMAS), variable=self._tema,
                           width=200, dynamic_resizing=False,
                           command=self._cambiar_tema).pack(anchor="w", padx=16, pady=(2, 8))
         ctk.CTkLabel(apariencia, text="«Sistema» sigue el modo claro u oscuro de Windows.",
-                     font=("Segoe UI", 10), text_color=GRIS_TEXTO, anchor="w",
+                     font=FUENTE_PEQUE, text_color=GRIS_TEXTO, anchor="w",
                      wraplength=260, justify="left").pack(fill="x", padx=16, pady=(0, 16))
 
         version = self._tarjeta(panel, 2, "Versión")

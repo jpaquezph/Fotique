@@ -6,20 +6,24 @@ from typing import Any, Callable, Optional
 
 import customtkinter as ctk
 
+from ..domain import auth
 from ..domain.errors import DatosInvalidosError, FotiqueError
-from ..domain.models import RolUsuario, Usuario
+from ..domain.models import Fotografo, RolUsuario, Usuario
 from .theme import (
     ACENTO,
     BORDE,
-    FONDO,
+    FUENTE_ETIQUETA,
     FUENTE_NORMAL,
     FUENTE_PEQUE,
     FUENTE_SUBTITULO,
     GRIS_TEXTO,
-    LATERAL,
+    LIENZO,
+    RADIO_GR,
     RESALTE,
     ROJO,
+    TARJETA_ACCESO,
     TEXTO,
+    TEXTO_SUAVE,
 )
 from .logo import Logo
 from .widgets import boton, boton_secundario
@@ -31,13 +35,14 @@ class PantallaAcceso(ctk.CTkFrame):
     """Ocupa la ventana hasta que alguien ingresa; avisa con ``al_ingresar(usuario)``."""
 
     def __init__(self, master: Any, app: Any, al_ingresar: Callable[[Usuario], None]):
-        super().__init__(master, fg_color=LATERAL, corner_radius=0)
+        super().__init__(master, fg_color=LIENZO, corner_radius=0)
         self.app = app
         self._al_ingresar = al_ingresar
         self._campos: dict[str, ctk.CTkEntry] = {}
         self._aceptar: Optional[Callable[[], None]] = None
 
-        self._tarjeta = ctk.CTkFrame(self, width=420, fg_color=FONDO, corner_radius=18,
+        self._tarjeta = ctk.CTkFrame(self, width=420, fg_color=TARJETA_ACCESO,
+                                     corner_radius=RADIO_GR,
                                      border_width=1, border_color=BORDE)
         self._tarjeta.place(relx=0.5, rely=0.5, anchor="center")
         # Enter en cualquier campo envía el formulario: se enlaza en la ventana.
@@ -63,7 +68,7 @@ class PantallaAcceso(ctk.CTkFrame):
             hijo.destroy()
         self._campos = {}
         self._aceptar = None
-        Logo(self._tarjeta, FONDO).pack(padx=40, pady=(22, 0))
+        Logo(self._tarjeta, TARJETA_ACCESO).pack(padx=40, pady=(22, 0))
         ctk.CTkLabel(self._tarjeta, text=titulo, font=FUENTE_SUBTITULO,
                      text_color=TEXTO).pack(padx=40, pady=(8, 0))
         ctk.CTkLabel(self._tarjeta, text=subtitulo, font=FUENTE_PEQUE,
@@ -72,9 +77,9 @@ class PantallaAcceso(ctk.CTkFrame):
 
     def _campo(self, clave: str, etiqueta: str, *, oculto: bool = False,
                valor: str = "") -> ctk.CTkEntry:
-        ctk.CTkLabel(self._tarjeta, text=etiqueta, font=FUENTE_PEQUE,
-                     text_color=GRIS_TEXTO, anchor="w").pack(fill="x", padx=40)
-        entrada = ctk.CTkEntry(self._tarjeta, width=340, height=32, font=FUENTE_NORMAL,
+        ctk.CTkLabel(self._tarjeta, text=etiqueta, font=FUENTE_ETIQUETA,
+                     text_color=TEXTO_SUAVE, anchor="w").pack(fill="x", padx=40)
+        entrada = ctk.CTkEntry(self._tarjeta, width=340, height=34, font=FUENTE_NORMAL,
                                show=OCULTO if oculto else "")
         entrada.insert(0, valor)
         entrada.pack(padx=40, pady=(0, 6))
@@ -98,7 +103,7 @@ class PantallaAcceso(ctk.CTkFrame):
                                      text_color=ROJO, wraplength=340, justify="left",
                                      anchor="w")
         self._mensaje.pack(fill="x", padx=40)
-        boton(self._tarjeta, texto_ok, accion, ancho=340, alto=36, solido=True).pack(
+        boton(self._tarjeta, texto_ok, accion, ancho=340, alto=36).pack(
             padx=40, pady=(6, 8 if enlace else 26))
         if enlace:
             ctk.CTkButton(self._tarjeta, text=enlace[0], command=enlace[1],
@@ -131,7 +136,8 @@ class PantallaAcceso(ctk.CTkFrame):
     def mostrar_primer_usuario(self) -> None:
         self._reiniciar("Crear la cuenta de administrador",
                         "Es la primera vez que se abre esta base de datos. "
-                        "Esta cuenta podrá crear al resto de los usuarios.")
+                        "Esta cuenta podrá crear al resto de los usuarios y "
+                        "queda cargada también como fotógrafo.")
         self._campo("nombre", "Nombre y apellido")
         self._campo("usuario", "Usuario")
         self._campo("email", "Email (opcional)")
@@ -147,9 +153,26 @@ class PantallaAcceso(ctk.CTkFrame):
                           email=self._valor("email").strip(),
                           rol=RolUsuario.ADMINISTRADOR)
         repo = self.app.repos.usuarios
+        # Se valida antes de tocar la base: el fotógrafo no debe quedar creado
+        # si la cuenta después se rechaza.
+        usuario.validar()
+        auth.validar_password(password)
+        usuario.fotografo_id = self._fotografo_del_administrador(usuario).id
         codigo = repo.crear(usuario, password)
         self._mostrar_codigo(codigo, lambda: self._al_ingresar(
             repo.autenticar(usuario.usuario, password)))
+
+    def _fotografo_del_administrador(self, usuario: Usuario) -> Fotografo:
+        """Quien abre el estudio también saca fotos: se lo da de alta como
+        fotógrafo, o se usa el que ya exista con su nombre (una base anterior
+        a las cuentas puede traer fotógrafos cargados)."""
+        nombre, _, apellido = (usuario.nombre or usuario.usuario).partition(" ")
+        nuevo = Fotografo(nombre=nombre, apellido=apellido.strip(), email=usuario.email)
+        fotografos = self.app.repos.fotografos
+        for existente in fotografos.listar():
+            if existente.nombre_completo.casefold() == nuevo.nombre_completo.casefold():
+                return existente
+        return fotografos.crear(nuevo)
 
     # -- ingreso ------------------------------------------------------------ #
     def mostrar_ingreso(self, usuario: str = "", aviso: str = "") -> None:

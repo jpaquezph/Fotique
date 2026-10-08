@@ -9,7 +9,7 @@ import customtkinter as ctk
 from tkinter import filedialog
 
 from ...util import dir_respaldos, fecha_legible
-from ..theme import BORDE, FONDO, GRIS_TEXTO, TEXTO_SUAVE
+from ..theme import BORDE, FONDO, GRIS_TEXTO, RADIO, TEXTO_SUAVE
 from ..widgets import Tabla, boton, boton_secundario
 from .base import VistaBase
 
@@ -36,7 +36,7 @@ class VistaRespaldos(VistaBase):
         boton_secundario(barra, "Abrir carpeta", self._abrir_carpeta).pack(
             side="left", padx=(0, 6))
 
-        ficha = ctk.CTkFrame(contenedor, corner_radius=10, fg_color=FONDO,
+        ficha = ctk.CTkFrame(contenedor, corner_radius=RADIO, fg_color=FONDO,
                              border_width=1, border_color=BORDE)
         ficha.grid(row=1, column=0, sticky="ew", pady=(0, 10))
         ficha.grid_columnconfigure(1, weight=1)

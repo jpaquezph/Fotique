@@ -67,7 +67,7 @@ de alta desde la sección **Usuarios** (sólo visible para administradores).
   se genera una provisoria que el usuario debe cambiar al ingresar.
 - **Bloqueo:** 5 intentos fallidos bloquean la cuenta 5 minutos.
 - **Roles:** `Administrador` y `Usuario`. Sólo los administradores ven
-  **Usuarios** y **Resumen general**, eliminan equipos y restauran respaldos.
+  **Usuarios** y **Resumen administrativo**, eliminan equipos y restauran respaldos.
 - **Fotógrafos:** al dar de alta uno, el administrador elige su rol y se crea
   su cuenta con una contraseña provisoria.
 
@@ -130,7 +130,7 @@ falsos positivos de antivirus), cambiá el `EXE(...)` final del spec por el modo
 | Fotógrafos | Personal, equipos tomados, trabajos con rol, historial de entregas | `fotique/ui/views/fotografos.py` |
 | Clientes y proyectos | Tipo de proyecto, seña, cobros con tope en el total, saldo automático | `fotique/ui/views/proyectos.py` |
 | Calendario, tarifario y contratos | Agenda unificada, precios, contratos desde plantillas | `fotique/ui/views/{calendario,servicios,contratos}.py` |
-| Resumen general | Dinero, equipos, personal, clientes y contratos por período, con gráficos | `fotique/ui/views/resumen.py` |
+| Resumen administrativo | Dinero, equipos, personal, clientes y contratos por período, con gráficos | `fotique/ui/views/resumen.py` |
 | Configuración y usuarios | Mi cuenta, apariencia, versión, respaldo y restauración de la base; cuentas y roles | `fotique/ui/views/{configuracion,respaldos,usuarios}.py` |
 
 ### Estructura

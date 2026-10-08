@@ -13,14 +13,18 @@ from . import views
 from .acceso import PantallaAcceso
 from .logo import Logo, aplicar_icono, identificar_aplicacion
 from .theme import (
+    BORDE,
+    BORDE_FUERTE,
     BOTONES,
+    FUENTE_ETIQUETA,
+    FUENTE_NAV,
     FUENTE_NORMAL,
     FUENTE_PEQUE,
-    FUENTE_SUBTITULO,
     LATERAL,
     LATERAL_HOVER,
     LATERAL_SUAVE,
     LATERAL_TEXTO,
+    RADIO_CH,
     TEXTO_BOTON,
     aplicar_estilo_tabla,
     area_de_trabajo,
@@ -28,16 +32,16 @@ from .theme import (
 )
 
 MENU_NAVEGACION = [
-    ("panel", "Panel de control"),
-    ("resumen", "Resumen general"),
+    ("panel", "Resumen general"),
+    ("resumen", "Resumen administrativo"),
     ("equipos", "Inventario de equipos"),
     ("fotografos", "Fotógrafos"),
     ("proyectos", "Clientes y proyectos"),
     ("calendario", "Calendario"),
     ("servicios", "Tarifario"),
     ("contratos", "Contratos"),
-    ("configuracion", "Configuración"),
     ("usuarios", "Usuarios"),
+    ("configuracion", "Configuración"),
 ]
 
 VERSION = __version__
@@ -88,7 +92,7 @@ class VentanaPrincipal(ctk.CTk):
         self.geometry(f"{ancho}x{alto}+{max(x0, x)}+{y0}")
         self.minsize(min(1140, ancho), min(600, alto))
         self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=1)
+        self.grid_columnconfigure(2, weight=1)
         aplicar_estilo_tabla(self)
 
         self._acceso: Optional[PantallaAcceso] = None
@@ -108,7 +112,7 @@ class VentanaPrincipal(ctk.CTk):
     def _mostrar_acceso(self) -> None:
         self.config(menu=Menu(self, tearoff=0))
         self._acceso = PantallaAcceso(self, self.app, self._al_ingresar)
-        self._acceso.grid(row=0, column=0, columnspan=2, sticky="nsew")
+        self._acceso.grid(row=0, column=0, columnspan=3, sticky="nsew")
 
     def _al_ingresar(self, usuario: Any) -> None:
         self.app.usuario = usuario
@@ -181,50 +185,56 @@ class VentanaPrincipal(ctk.CTk):
         lateral = ctk.CTkFrame(self, width=240, corner_radius=0, fg_color=LATERAL)
         lateral.grid(row=0, column=0, sticky="nsew")
         lateral.grid_propagate(False)
-        # La barra es oscura en los dos modos: acá el logo va siempre en blanco.
-        Logo(lateral, LATERAL, siempre_blanco=True).pack(
-            anchor="w", padx=20, pady=(18, 4))
-        ctk.CTkLabel(lateral, text="FOTIQUE · GESTIÓN PROFESIONAL", font=("Segoe UI", 8, "bold"),
+        Logo(lateral, LATERAL).pack(
+            anchor="w", padx=22, pady=(22, 4))
+        ctk.CTkLabel(lateral, text="FOTIQUE · GESTIÓN PROFESIONAL", font=("Segoe UI Semibold", 8),
                      text_color=LATERAL_SUAVE, anchor="w").pack(
-            fill="x", padx=21, pady=(0, 14))
+            fill="x", padx=23, pady=(0, 18))
 
         # El pie se ubica antes que la navegación: si la ventana es baja, lo que
         # se recorta es el final del menú y no el cierre de sesión.
         pie = ctk.CTkFrame(lateral, fg_color="transparent")
-        pie.pack(side="bottom", fill="x", padx=14, pady=(8, 14))
+        pie.pack(side="bottom", fill="x", padx=12, pady=(8, 16))
         if usuario is not None:
             self._etiqueta_usuario = ctk.CTkLabel(
-                pie, text=self._texto_usuario(usuario), font=FUENTE_PEQUE,
-                text_color=LATERAL_TEXTO, anchor="w")
-            self._etiqueta_usuario.pack(fill="x", pady=(0, 4))
+                pie, text=self._texto_usuario(usuario), font=FUENTE_ETIQUETA,
+                text_color=LATERAL_SUAVE, anchor="w")
+            self._etiqueta_usuario.pack(fill="x", padx=4, pady=(0, 6))
             ctk.CTkButton(
                 pie, text="Cambiar de usuario", command=self.pedir_cambio_de_usuario,
-                width=212, height=30, fg_color="transparent",
+                width=212, height=34, fg_color="transparent",
                 hover_color=LATERAL_HOVER, text_color=LATERAL_TEXTO,
-                border_width=1, border_color=LATERAL_HOVER, font=FUENTE_NORMAL,
+                border_width=1, border_color=BORDE_FUERTE, font=FUENTE_NORMAL,
             ).pack(fill="x")
 
         for clave, texto in MENU_NAVEGACION:
             if clave not in permitidas:
                 continue
             btn = ctk.CTkButton(
-                lateral, text=texto, anchor="w", height=32, corner_radius=10,
-                font=FUENTE_SUBTITULO, fg_color="transparent",
+                lateral, text=texto, anchor="w", height=34, corner_radius=RADIO_CH,
+                font=FUENTE_NAV, fg_color="transparent",
                 hover_color=LATERAL_HOVER, text_color=LATERAL_TEXTO,
-                command=lambda k=clave: self.mostrar(k),
             )
-            btn.pack(fill="x", padx=14, pady=1)
+            # Al apretar, no al soltar (que es cuando CustomTkinter dispara
+            # ``command``): si no, el cambio llega recién al levantar el dedo.
+            btn.bind("<Button-1>", lambda _e, k=clave: self.mostrar(k))
+            btn.pack(fill="x", padx=12, pady=1)
             self._botones[clave] = btn
 
         # -- contenido ------------------------------------------------------- #
         contenedor = ctk.CTkFrame(self, fg_color="transparent", corner_radius=0)
-        contenedor.grid(row=0, column=1, sticky="nsew", padx=(14, 16), pady=14)
+        contenedor.grid(row=0, column=2, sticky="nsew", padx=(24, 24), pady=(18, 16))
         contenedor.grid_rowconfigure(0, weight=1)
         contenedor.grid_columnconfigure(0, weight=1)
         self._tamano_contenido: Optional[tuple[int, int]] = None
         contenedor.bind("<Configure>", self._al_redimensionar, add="+")
 
-        self._principal = [lateral, contenedor]
+        # Línea que separa la barra blanca del lienzo; en oscuro no se ve.
+        separador = ctk.CTkFrame(self, width=2, corner_radius=0,
+                                 fg_color=(BORDE[0], LATERAL[1]))
+        separador.grid(row=0, column=1, sticky="ns")
+
+        self._principal = [lateral, separador, contenedor]
         self.vistas = _Vistas(clases, lambda clase: clase(contenedor, self.app))
         self.clave_activa = None
         self.mostrar("panel")
@@ -248,11 +258,14 @@ class VentanaPrincipal(ctk.CTk):
         btn = self._botones.get(clave) if clave else None
         if btn is None:
             return
-        relleno, hover = BOTONES["primario"]
+        # El activo no cambia de tono al pasarle el cursor: CustomTkinter repone
+        # el color de «hover» 100 ms después de cada clic y eso se veía como
+        # un parpadeo tardío al cambiar de sección.
+        relleno = BOTONES["primario"][0]
         btn.configure(
             fg_color=relleno if activo else "transparent",
             text_color=TEXTO_BOTON if activo else LATERAL_TEXTO,
-            hover_color=hover if activo else LATERAL_HOVER,
+            hover_color=relleno if activo else LATERAL_HOVER,
         )
 
     def mostrar(self, clave: str) -> None:
@@ -263,6 +276,10 @@ class VentanaPrincipal(ctk.CTk):
             self._marcar_boton(self.clave_activa, False)
             self._marcar_boton(clave, True)
             self.clave_activa = clave
+            # Los dos botones se repintan ya, juntos: si no, cada uno espera su
+            # turno entre los repintados de la vista y el anterior queda
+            # marcado un instante de más.
+            self.update_idletasks()
         vista.refrescar()
         # Las vistas ya ubicadas quedan apiladas y se alterna con lift(), que es
         # lo más rápido; _al_redimensionar retira las que no se ven.

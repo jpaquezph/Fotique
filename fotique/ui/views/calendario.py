@@ -12,12 +12,17 @@ from ..dialogs import DialogoEvento
 from ..theme import (
     BOTONES,
     CON_EVENTOS,
+    FAMILIA,
+    FUENTE_SUBTITULO,
     GRIS_TEXTO,
     NEUTRO_HOVER,
+    RADIO_CH,
+    SEMINEGRITA,
     TEXTO,
     TEXTO_BOTON,
     TEXTO_SUAVE,
     TEXTO_TENUE,
+    ancho_par,
 )
 from ..widgets import Tabla, boton, boton_secundario
 from .base import VistaBase
@@ -49,7 +54,7 @@ class VistaCalendario(VistaBase):
         barra.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 8))
         boton_secundario(barra, "◀", lambda: self._mover_mes(-1), ancho=42).pack(
             side="left", padx=(0, 6))
-        self._etiqueta_mes = ctk.CTkLabel(barra, text="", font=("Segoe UI", 14, "bold"),
+        self._etiqueta_mes = ctk.CTkLabel(barra, text="", font=FUENTE_SUBTITULO,
                                           width=210, anchor="w")
         self._etiqueta_mes.pack(side="left", padx=(0, 6))
         boton_secundario(barra, "▶", lambda: self._mover_mes(1), ancho=42).pack(
@@ -77,7 +82,7 @@ class VistaCalendario(VistaBase):
             panel_mes.grid_rowconfigure(fila, weight=1, uniform="semana")
 
         for i, dia in enumerate(DIAS_CABECERA):
-            ctk.CTkLabel(panel_mes, text=dia, font=("Segoe UI", 11, "bold"),
+            ctk.CTkLabel(panel_mes, text=dia, font=(SEMINEGRITA, 11),
                          text_color=TEXTO_SUAVE, width=54).grid(
                 row=0, column=i, padx=2, pady=(0, 4))
         self._celdas: list[ctk.CTkButton] = []
@@ -88,11 +93,14 @@ class VistaCalendario(VistaBase):
         for indice in range(42):
             fila, columna = divmod(indice, 7)
             celda = ctk.CTkButton(
-                panel_mes, text="", width=54, height=36, corner_radius=8,
+                panel_mes, text="", width=ancho_par(panel_mes, 54), height=36,
+                corner_radius=RADIO_CH,
                 font=("Segoe UI", 11), fg_color="transparent",
                 hover_color=NEUTRO_HOVER, text_color=TEXTO, anchor="center",
-                command=lambda i=indice: self._seleccionar_celda(i),
             )
+            # Al apretar y no al soltar: ver VentanaPrincipal._construir_principal.
+            celda.bind("<Button-1>", lambda _e, i=indice: self._seleccionar_celda(i),
+                       add="+")
             celda.bind("<Double-Button-1>",
                        lambda _e, i=indice: self._nuevo_evento_en_celda(i), add="+")
             celda.grid(row=fila + 1, column=columna, padx=2, pady=2, sticky="nsew")
@@ -105,7 +113,7 @@ class VistaCalendario(VistaBase):
         panel_dia.grid_columnconfigure(0, weight=1)
 
         self._etiqueta_dia = ctk.CTkLabel(panel_dia, text="", anchor="w",
-                                          font=("Segoe UI", 13, "bold"))
+                                          font=FUENTE_SUBTITULO)
         self._etiqueta_dia.grid(row=0, column=0, sticky="ew", pady=(0, 6))
 
         columnas = [
@@ -157,12 +165,13 @@ class VistaCalendario(VistaBase):
         self._eventos_por_dia = por_dia
 
         hoy = date.today()
-        seleccionado, seleccionado_hover = BOTONES["primario"]
+        # Sin tono de «hover» en el día elegido: ver VentanaPrincipal._marcar_boton.
+        seleccionado = BOTONES["primario"][0]
         for indice, celda in enumerate(self._celdas):
             dia = inicio + timedelta(days=indice)
             tiene = bool(por_dia.get(dia))
             if dia == self._dia:
-                fondo, texto_color, hover = seleccionado, TEXTO_BOTON, seleccionado_hover
+                fondo, texto_color, hover = seleccionado, TEXTO_BOTON, seleccionado
             elif tiene:
                 fondo, texto_color, hover = CON_EVENTOS, TEXTO, NEUTRO_HOVER
             else:
@@ -177,7 +186,7 @@ class VistaCalendario(VistaBase):
                 celda.configure(text=str(dia.day), fg_color=fondo,
                                 text_color=texto_color, hover_color=hover,
                                 border_width=borde, border_color=seleccionado,
-                                font=("Segoe UI", 11, "bold" if tiene else "normal"))
+                                font=(SEMINEGRITA if tiene else FAMILIA, 11))
         self._mostrar_dia()
 
     def _inicio_grilla(self) -> date:

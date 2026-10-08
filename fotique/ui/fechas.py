@@ -22,6 +22,7 @@ from .theme import (
     NEUTRO,
     NEUTRO_HOVER,
     TEXTO,
+    ancho_par,
     area_de_trabajo,
     colores_tema,
     elegir,
@@ -225,7 +226,8 @@ class SelectorFecha(ctk.CTkFrame):
         self._entrada = ctk.CTkEntry(self, width=ancho - 40, font=FUENTE_NORMAL,
                                      placeholder_text="Sin fecha")
         self._entrada.pack(side="left")
-        self._boton = ctk.CTkButton(self, text="▾", width=34, command=self.abrir,
+        self._boton = ctk.CTkButton(self, text="▾", width=ancho_par(self, 34),
+                                    command=self.abrir,
                                     fg_color=NEUTRO, hover_color=NEUTRO_HOVER,
                                     text_color=TEXTO)
         self._boton.pack(side="left", padx=(6, 0))

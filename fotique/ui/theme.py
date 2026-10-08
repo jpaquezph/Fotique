@@ -15,79 +15,92 @@ from typing import Optional
 
 import customtkinter as ctk
 
-FUENTE_TITULO = ("Segoe UI", 22, "bold")
-FUENTE_SUBTITULO = ("Segoe UI", 13, "bold")
-FUENTE_NORMAL = ("Segoe UI", 11)
-FUENTE_BOTON = ("Segoe UI", 11, "bold")
-FUENTE_PEQUE = ("Segoe UI", 10)
-FUENTE_TABLA = ("Segoe UI", 12)
-FUENTE_TARJETA = ("Segoe UI", 22, "bold")
+# La negrita queda para títulos y cifras; etiquetas, botones y encabezados van
+# en seminegrita, que pesa menos al lado del contenido.
+FAMILIA = "Segoe UI"
+SEMINEGRITA = "Segoe UI Semibold"
+FUENTE_TITULO = (FAMILIA, 22, "bold")
+FUENTE_SUBTITULO = (FAMILIA, 14, "bold")
+FUENTE_DIALOGO = (FAMILIA, 17, "bold")
+FUENTE_NORMAL = (FAMILIA, 11)
+FUENTE_BOTON = (SEMINEGRITA, 11)
+FUENTE_PEQUE = (FAMILIA, 10)
+FUENTE_ETIQUETA = (SEMINEGRITA, 10)
+FUENTE_TABLA = (FAMILIA, 12)
+FUENTE_TARJETA = (FAMILIA, 22, "bold")
+FUENTE_NAV = (FAMILIA, 13)
+
+# Esquinas: tarjetas y paneles, controles, y la tarjeta de acceso.
+RADIO = 16
+RADIO_CH = 10
+RADIO_GR = 22
 
 Color = tuple[str, str]
 
 # -- superficies y texto ----------------------------------------------------- #
 # El LIENZO es el fondo de la ventana; FONDO es la superficie de tarjetas,
 # tablas y campos, que se despega del lienzo sin depender solo del borde.
-LIENZO: Color = ("#f4f3f9", "#131218")
-FONDO: Color = ("#ffffff", "#1c1a23")
-RESALTE: Color = ("#ebe9f5", "#272431")      # hover, encabezados, día de hoy
-BORDE: Color = ("#dddaea", "#2f2c3b")
-TEXTO: Color = ("#18161f", "#eceaf4")
-TEXTO_SUAVE: Color = ("#5e5a70", "#a09cb3")
-TEXTO_TENUE: Color = ("#b3afc4", "#4d4960")  # días fuera del mes, deshabilitado
-GRIS_TEXTO: Color = ("#6d697f", "#928ea6")
+# En claro los neutros son cálidos (crema y tinta marrón); en oscuro todo
+# parte de la tinta violácea de la marca, la misma de la barra lateral.
+LIENZO: Color = ("#faf6ef", "#0e0d12")
+FONDO: Color = ("#ffffff", "#1a1822")
+RESALTE: Color = ("#f3eee3", "#262330")      # hover, encabezados, día de hoy
+BORDE: Color = ("#e7e0d2", "#2f2c3b")
+BORDE_FUERTE: Color = ("#d6cdba", "#403c50")  # contorno de los botones secundarios
+# En oscuro todo el texto va en blanco: los grises se leían apagados.
+TEXTO: Color = ("#2b2620", "#ffffff")
+TEXTO_SUAVE: Color = ("#6f6656", "#ffffff")
+TEXTO_TENUE: Color = ("#bdb4a2", "#555168")  # días fuera del mes, deshabilitado
+GRIS_TEXTO: Color = ("#857b68", "#ffffff")
+MARCADOR: Color = ("#857b68", "#928ea6")     # texto de ayuda de un campo vacío
 
-# -- barra lateral: tinta oscura en los dos modos, es la marca de la app ------ #
-LATERAL: Color = ("#17151e", "#0e0d12")
-LATERAL_HOVER: Color = ("#272432", "#1d1b26")
-LATERAL_TEXTO: Color = ("#dedbea", "#dedbea")
-LATERAL_SUAVE: Color = ("#8d899f", "#8d899f")
+# -- barra lateral: blanca en claro; en oscuro se funde con el lienzo ---------- #
+LATERAL: Color = ("#ffffff", "#0e0d12")
+LATERAL_HOVER: Color = ("#f3eee3", "#1d1b26")
+LATERAL_TEXTO: Color = ("#2b2620", "#ffffff")
+LATERAL_SUAVE: Color = ("#857b68", "#ffffff")
+# Tarjeta del acceso: en oscuro toda la pantalla de ingreso es un solo fondo.
+TARJETA_ACCESO: Color = ("#ffffff", "#0e0d12")
 
 # -- acentos para texto (legibles sobre FONDO en ambos modos) ---------------- #
 ACENTO: Color = ("#5b3fd6", "#a594ff")
-VERDE: Color = ("#16702f", "#6fd08a")
-ROJO: Color = ("#b8242e", "#ff8a8f")
-NARANJA: Color = ("#b85f14", "#e0a060")
+VERDE: Color = ("#128a43", "#5fdc8c")
+ROJO: Color = ("#d42a3a", "#ff7f88")
+NARANJA: Color = ("#cf5f0a", "#f5a04e")
 AMARILLO: Color = ("#8a6a00", "#e8cc5a")
 VIOLETA: Color = ("#7446b5", "#b396e0")
 TURQUESA: Color = ("#17807f", "#5fc4c2")
 
-# -- botones sólidos: (relleno, hover), con texto en TEXTO_BOTON -------------- #
-# Para la acción principal de un diálogo y para lo que está seleccionado.
+# -- botones: (relleno, hover), con texto en TEXTO_BOTON ---------------------- #
+# Color pleno y vivo: el tono dice qué hace cada acción (crear, cobrar,
+# devolver, borrar). También pinta lo que está seleccionado.
 TEXTO_BOTON: Color = ("#ffffff", "#ffffff")
+TEXTO_BOTON_INACTIVO: Color = ("#e6e0ff", "#b9b2d6")  # sobre un botón deshabilitado
 BOTONES: dict[str, tuple[Color, Color]] = {
     "primario": (("#6d4aff", "#6d4aff"), ("#5a38e8", "#8166ff")),
-    "exito": (("#17854a", "#17854a"), ("#126c3c", "#1f9d57")),
-    "aviso": (("#c2570f", "#c2570f"), ("#a3480b", "#d96a1e")),
-    "peligro": (("#d93651", "#d93651"), ("#bd2843", "#e8526b")),
-}
-# -- botones tonales: (relleno, hover, texto). Son los de las barras de -------- #
-# acciones: varios juntos no compiten con el contenido.
-TONOS: dict[str, tuple[Color, Color, Color]] = {
-    "primario": (("#e9e4ff", "#2a2447"), ("#d9d1ff", "#372f5e"), ("#4a2fc4", "#c5baff")),
-    "exito": (("#daf3e4", "#16301f"), ("#c5ebd4", "#1e4029"), ("#126c3a", "#7fe0a2")),
-    "aviso": (("#fdead5", "#382614"), ("#fadcba", "#4a331b"), ("#994c0b", "#f2b272")),
-    "peligro": (("#fde0e5", "#3b1922"), ("#fbcbd3", "#50222e"), ("#b3213a", "#ff9aa8")),
+    "exito": (("#149653", "#149653"), ("#0f7f45", "#1bb065")),
+    "aviso": (("#e8641b", "#e8641b"), ("#cf5410", "#f57a33")),
+    "peligro": (("#e5384f", "#e5384f"), ("#cc2940", "#f0546a")),
 }
 # Rellenos sólidos de las tarjetas (texto en TEXTO_BOTON): una gama análoga
 # de fríos, del celeste al malva, más el verde y el rojo de los importes.
 RELLENOS: dict[str, Color] = {
-    "celeste": ("#3b8fc2", "#327aa8"),
-    "azul": ("#5278d9", "#4366c2"),
-    "indigo": ("#6d68d8", "#5c57bf"),
-    "violeta": ("#8f62d0", "#7b52b8"),
-    "malva": ("#b05fa6", "#984f8f"),
-    "verde": ("#2f9a6a", "#288259"),
-    "rojo": ("#cf4f66", "#b34258"),
+    "celeste": ("#1c96d6", "#1883bd"),
+    "azul": ("#3d6ff2", "#3460d6"),
+    "indigo": ("#5f55ee", "#5249d4"),
+    "violeta": ("#8b4eea", "#7a41d1"),
+    "malva": ("#c043b4", "#a8389d"),
+    "verde": ("#149653", "#12854a"),
+    "rojo": ("#e5384f", "#cc2f44"),
 }
-# Selectores, segmentos y desplegables: un violeta tenue de la familia del
-# acento en lugar de gris, para que se lean como controles y no como fondo.
-NEUTRO: Color = ("#eceaf6", "#252230")
-NEUTRO_HOVER: Color = ("#ddd9ee", "#322e42")
-SEGMENTO_ACTIVO: Color = ("#cfc5ff", "#4a3d8f")
-SELECCION: Color = ("#e4deff", "#332b5c")    # fila o segmento seleccionado
-CON_EVENTOS: Color = ("#ece8ff", "#262040")  # día del calendario con agenda
-CEBRA: Color = ("#f8f7fc", "#201e28")        # fila alternada de una tabla
+# Selectores, segmentos y desplegables: reposan en el neutro cálido y lo que
+# está elegido toma un tinte del acento, para leerse como control activo.
+NEUTRO: Color = ("#f3eee3", "#252230")
+NEUTRO_HOVER: Color = ("#e7e0d2", "#322e42")
+SEGMENTO_ACTIVO: Color = ("#d9d0ff", "#4a3d8f")
+SELECCION: Color = ("#e9e3ff", "#332b5c")    # fila o segmento seleccionado
+CON_EVENTOS: Color = ("#efeafb", "#2c2744")  # día del calendario con agenda
+CEBRA: Color = ("#fcfaf6", "#1f1d27")        # fila alternada de una tabla
 
 TEMAS = {"Oscuro": "dark", "Claro": "light", "Sistema": "system"}
 
@@ -107,33 +120,34 @@ def _cargar_tema() -> None:
         "CTkFrame": {"fg_color": FONDO, "top_fg_color": FONDO, "border_color": BORDE},
         "CTkButton": {"fg_color": primario, "hover_color": primario_hover,
                       "text_color": TEXTO_BOTON, "border_color": BORDE,
-                      "text_color_disabled": TEXTO_TENUE, "corner_radius": 16},
+                      "text_color_disabled": TEXTO_TENUE, "corner_radius": RADIO_CH},
         "CTkLabel": {"text_color": TEXTO},
         "CTkEntry": {"fg_color": FONDO, "border_color": BORDE, "border_width": 1,
-                     "text_color": TEXTO, "placeholder_text_color": TEXTO_SUAVE,
-                     "corner_radius": 10},
+                     "text_color": TEXTO, "placeholder_text_color": MARCADOR,
+                     "corner_radius": RADIO_CH},
         "CTkTextbox": {"fg_color": FONDO, "border_color": BORDE, "border_width": 1,
                        "text_color": TEXTO, "scrollbar_button_color": BORDE,
                        "scrollbar_button_hover_color": TEXTO_TENUE,
-                       "corner_radius": 10},
+                       "corner_radius": RADIO_CH},
         "CTkCheckBox": {"fg_color": primario, "hover_color": primario_hover,
                         "border_color": TEXTO_SUAVE, "checkmark_color": TEXTO_BOTON,
                         "text_color": TEXTO, "border_width": 2},
         "CTkOptionMenu": {"fg_color": NEUTRO, "button_color": NEUTRO_HOVER,
                           "button_hover_color": SEGMENTO_ACTIVO, "text_color": TEXTO,
-                          "text_color_disabled": TEXTO_TENUE, "corner_radius": 10},
+                          "text_color_disabled": TEXTO_TENUE, "corner_radius": RADIO_CH},
         "CTkSegmentedButton": {"fg_color": NEUTRO, "selected_color": SEGMENTO_ACTIVO,
                                "selected_hover_color": SEGMENTO_ACTIVO,
                                "unselected_color": NEUTRO,
                                "unselected_hover_color": NEUTRO_HOVER,
                                "text_color": TEXTO,
-                               "text_color_disabled": TEXTO_TENUE, "corner_radius": 10},
+                               "text_color_disabled": TEXTO_TENUE, "corner_radius": RADIO_CH},
         "CTkComboBox": {"fg_color": FONDO, "border_color": BORDE, "border_width": 1,
-                        "corner_radius": 10,
+                        "corner_radius": RADIO_CH,
                         "button_color": NEUTRO_HOVER, "button_hover_color": SEGMENTO_ACTIVO,
                         "text_color": TEXTO, "text_color_disabled": TEXTO_TENUE},
         "CTkScrollbar": {"button_color": BORDE, "button_hover_color": TEXTO_TENUE},
         "CTkScrollableFrame": {"label_fg_color": RESALTE},
+        "CTkFont": {"family": FAMILIA, "size": 12, "weight": "normal"},
         "DropdownMenu": {"fg_color": FONDO, "hover_color": NEUTRO_HOVER,
                          "text_color": TEXTO},
     }
@@ -163,6 +177,20 @@ def area_de_trabajo(widget: tkinter.Misc) -> tuple[int, int, int, int]:
         if ctypes.windll.user32.SystemParametersInfoW(0x0030, 0, ctypes.byref(rect), 0):
             return rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top
     return 0, 0, widget.winfo_screenwidth(), widget.winfo_screenheight()
+
+
+def ancho_par(widget: tkinter.Misc, ancho: int) -> int:
+    """``ancho`` o el siguiente que, con el escalado de pantalla, da píxeles pares.
+
+    CustomTkinter dibuja los botones sólo en anchos pares: con uno impar (118
+    al 150 % son 177 px) sobra una columna y la esquina derecha queda cortada.
+    """
+    escala = ctk.ScalingTracker.get_widget_scaling(widget)
+    for candidato in range(ancho, ancho + 8):
+        pixeles = candidato * escala
+        if abs(pixeles - round(pixeles)) < 1e-6 and round(pixeles) % 2 == 0:
+            return candidato
+    return ancho
 
 
 def modo_oscuro() -> bool:
@@ -211,7 +239,7 @@ def aplicar_estilo_tabla(master: Optional[tkinter.Misc] = None) -> None:
         foreground=c["texto"],
         borderwidth=0,
         relief="flat",
-        rowheight=32,
+        rowheight=34,
         font=FUENTE_TABLA,
         padding=4,
     )
@@ -221,8 +249,8 @@ def aplicar_estilo_tabla(master: Optional[tkinter.Misc] = None) -> None:
         foreground=c["texto_suave"],
         borderwidth=0,
         relief="flat",
-        font=("Segoe UI", 10, "bold"),
-        padding=8,
+        font=(FAMILIA, 10, "bold"),
+        padding=9,
     )
     style.map(
         "Fotique.Treeview",
@@ -263,6 +291,6 @@ def estilos_filas() -> dict[str, dict]:
     """Tags de fila que cambian fondo o letra: grupos y filas alternadas."""
     return {
         "grupo": {"background": elegir(RESALTE), "foreground": elegir(ACENTO),
-                  "font": ("Segoe UI", 10, "bold")},
+                  "font": FUENTE_ETIQUETA},
         "cebra": {"background": elegir(CEBRA)},
     }

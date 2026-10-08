@@ -1,4 +1,4 @@
-"""Resumen general del negocio (sólo administradores)."""
+"""Resumen administrativo del negocio (sólo administradores)."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def rango_periodo(periodo: str, hoy: Optional[date] = None
 
 class VistaResumen(VistaBase):
     clave = "resumen"
-    titulo = "Resumen general"
+    titulo = "Resumen administrativo"
     descripcion = "Movimientos de dinero, equipos, personal, clientes y contratos"
     solo_admin = True
 
@@ -88,9 +88,8 @@ class VistaResumen(VistaBase):
             ("resultado", "Resultado", "indigo"), ("saldo", "Saldo a cobrar", "celeste"),
         ]):
             tarjetas.grid_columnconfigure(i, weight=1, uniform="tarjeta")
-            tarjeta = Tarjeta(tarjetas, titulo, relleno=RELLENOS[color])
-            tarjeta.configure(height=78)
-            tarjeta.grid(row=0, column=i, sticky="nsew", padx=(0 if i == 0 else 8, 0))
+            tarjeta = Tarjeta(tarjetas, titulo, relleno=RELLENOS[color], compacta=True)
+            tarjeta.grid(row=0, column=i, sticky="nsew", padx=(0 if i == 0 else 10, 0))
             self._tarjetas[clave] = tarjeta
 
         acciones = ctk.CTkFrame(panel, fg_color="transparent")
@@ -123,7 +122,8 @@ class VistaResumen(VistaBase):
         panel = self._panel(master)
         panel.grid_rowconfigure(0, weight=1)
         self.tabla_equipos = Tabla(panel, [
-            {"clave": "equipo", "titulo": "Equipo", "ancho": 230},
+            {"clave": "producto", "titulo": "Producto", "ancho": 170},
+            {"clave": "equipo", "titulo": "Marca / Modelo", "ancho": 210},
             {"clave": "serie", "titulo": "N° de serie", "ancho": 130},
             {"clave": "estado", "titulo": "Estado", "ancho": 100, "anchor": "center"},
             {"clave": "salidas", "titulo": "Salidas", "ancho": 90, "anchor": "center"},
@@ -197,9 +197,11 @@ class VistaResumen(VistaBase):
         elif seccion == "Equipos":
             filas = informes.salidas_por_equipo(desde, hasta)
             self.tabla_equipos.actualizar(
-                [[f["equipo"], f["numero_serie"] or "—", f["estado"], f["salidas"],
-                  fecha_legible(f["ultima"]) or "—"] for f in filas], filas)
-            self.torta_equipos.mostrar([(f["equipo"], f["salidas"]) for f in filas])
+                [[f["producto"] or "—", f["equipo"], f["numero_serie"] or "—",
+                  f["estado"], f["salidas"], fecha_legible(f["ultima"]) or "—"]
+                 for f in filas], filas)
+            self.torta_equipos.mostrar(
+                [(f["producto"] or f["equipo"], f["salidas"]) for f in filas])
             self._pie.configure(
                 text=f"{sum(f['salidas'] for f in filas)} salida(s) de equipos en el "
                 f"período · {sum(1 for f in filas if not f['salidas'])} equipo(s) sin uso")

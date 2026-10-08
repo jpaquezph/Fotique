@@ -1661,7 +1661,7 @@ class InformeRepo:
     # -- equipos ----------------------------------------------------------- #
     def salidas_por_equipo(self, desde: Fecha = None, hasta: Fecha = None) -> list[dict]:
         return self._filas(
-            "SELECT e.marca || ' ' || e.modelo AS equipo, "
+            "SELECT e.marca || ' ' || e.modelo AS equipo, e.producto, "
             "COALESCE(e.numero_serie, '') AS numero_serie, e.estado, "
             "COUNT(h.id) AS salidas, MAX(h.fecha_asignacion) AS ultima "
             "FROM equipos e LEFT JOIN historial_asignaciones h ON h.equipo_id = e.id "

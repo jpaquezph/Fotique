@@ -10,7 +10,7 @@ from typing import Any, Callable, Sequence
 
 import customtkinter as ctk
 
-from .theme import BORDE, FONDO, Color, colores_tema, elegir
+from .theme import BORDE, FONDO, RADIO, SEMINEGRITA, Color, colores_tema, elegir
 
 # Tonos distinguibles entre sí en ambos modos: (claro, oscuro).
 PALETA: list[Color] = [
@@ -89,14 +89,14 @@ class Torta(ctk.CTkFrame):
 
     def __init__(self, master: Any, titulo: str, *, diametro: int = 150,
                  formato: Callable[[float], str] = lambda v: f"{v:g}"):
-        super().__init__(master, corner_radius=10, fg_color=FONDO, border_width=1,
+        super().__init__(master, corner_radius=RADIO, fg_color=FONDO, border_width=1,
                          border_color=BORDE)
         self._formato = formato
         self._datos: list[tuple[str, float]] = []
         escala = self._get_widget_scaling()
         self._lado = int(diametro * escala)
         self._letra = -round(12 * escala)  # tk no escala sus fuentes en puntos
-        ctk.CTkLabel(self, text=titulo, font=("Segoe UI", 12, "bold"), anchor="w").pack(
+        ctk.CTkLabel(self, text=titulo, font=(SEMINEGRITA, 12), anchor="w").pack(
             fill="x", padx=14, pady=(10, 2))
         self._lienzo = tk.Canvas(self, width=self._lado, height=self._lado,
                                  highlightthickness=0, bd=0)

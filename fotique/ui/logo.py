@@ -46,16 +46,11 @@ def identificar_aplicacion() -> None:
 
 
 class Logo(ctk.CTkFrame):
-    """El logo sobre ``fondo``; elige negro o blanco según el modo activo.
+    """El logo sobre ``fondo``; elige negro o blanco según el modo activo."""
 
-    ``siempre_blanco`` es para superficies oscuras en los dos modos (la barra
-    lateral).
-    """
-
-    def __init__(self, master: Any, fondo: Color, *, siempre_blanco: bool = False):
+    def __init__(self, master: Any, fondo: Color):
         super().__init__(master, fg_color="transparent")
         self._fondo = fondo
-        self._siempre_blanco = siempre_blanco
         porcentaje = self._get_widget_scaling() * 100
         self._escala = min(ESCALAS, key=lambda e: abs(e - porcentaje))
         self._imagenes: dict[str, tk.PhotoImage] = {}
@@ -84,7 +79,7 @@ class Logo(ctk.CTkFrame):
         return None  # pragma: no cover - queda el nombre en texto
 
     def _pintar(self) -> None:
-        blanco = self._siempre_blanco or modo_oscuro()
+        blanco = modo_oscuro()
         imagen = self._imagen("blanco" if blanco else "negro")
         if imagen is None:  # sin recursos: el nombre en texto
             self._etiqueta.configure(text="fotique", font=("Segoe UI", 20, "bold"),
